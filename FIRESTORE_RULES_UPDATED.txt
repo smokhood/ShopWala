@@ -1,0 +1,58 @@
+/**
+ * UPDATED FIRESTORE SECURITY RULES
+ * 
+ * Go to: Firebase Console → Firestore Database → Rules
+ * Replace ALL content with this
+ * Then click PUBLISH
+ * 
+ * Key Change: Shops and products now allow unauthenticated READ
+ * (since they are public marketplace data)
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow EVERYONE to read shops (public marketplace data)
+    // Only owners can write to their shops
+    match /shops/{shopId} {
+      allow read: if true;  // ← Changed from request.auth != null
+      allow write: if request.auth != null && request.auth.uid == resource.data.ownerId;
+      allow create: if request.auth != null;
+      
+      // Allow EVERYONE to read products (public data)
+      match /products/{productId} {
+        allow read: if true;  // ← Changed from request.auth != null
+        allow write: if request.auth != null && request.auth.uid == get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId;
+      }
+    }
+
+    // Users can read/write their own documents
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || request.auth != null);
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Deals - everyone can read, owners can write
+    match /deals/{dealId} {
+      allow read: if true;  // ← Changed from request.auth != null (public deals)
+      allow write: if request.auth != null && request.auth.uid == resource.data.ownerId;
+      allow create: if request.auth != null;
+    }
+
+    // Notifications - only user can read/write their own
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+    }
+
+    // Orders - customers and owners access their orders
+    match /orders/{orderId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.customerId || request.auth.uid == resource.data.ownerId);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.customerId || request.auth.uid == resource.data.ownerId);
+    }
+  }
+}

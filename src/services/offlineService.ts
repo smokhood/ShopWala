@@ -12,8 +12,15 @@ let db: SQLite.SQLiteDatabase | null = null;
  * Initialize SQLite database
  */
 export function initDB(): void {
+  if (db) return; // Already initialized
+  
   try {
     db = SQLite.openDatabaseSync(DB_NAME);
+    
+    if (!db) {
+      console.error('Failed to open database');
+      return;
+    }
 
     // Create tables if not exist
     db.execSync(`
@@ -32,6 +39,11 @@ export function initDB(): void {
         cached_at INTEGER NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS recent_searches (
+        query TEXT PRIMARY KEY,
+        used_at INTEGER NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS pending_actions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL,
@@ -42,11 +54,13 @@ export function initDB(): void {
       CREATE INDEX IF NOT EXISTS idx_shops_geohash ON cached_shops(geohash);
       CREATE INDEX IF NOT EXISTS idx_shops_cached_at ON cached_shops(cached_at);
       CREATE INDEX IF NOT EXISTS idx_searches_cached_at ON cached_searches(cached_at);
+      CREATE INDEX IF NOT EXISTS idx_recent_searches_used_at ON recent_searches(used_at);
     `);
 
-    console.log('SQLite database initialized');
+    console.log('✅ SQLite database initialized');
   } catch (error) {
-    console.error('Init DB error:', error);
+    console.error('❌ Init DB error:', error);
+    db = null;
   }
 }
 
@@ -140,6 +154,71 @@ export function cacheSearchResult(
     );
   } catch (error) {
     console.error('Cache search result error:', error);
+  }
+}
+
+/**
+ * Get recent search queries from local SQLite cache
+ * @param limit Max number of recent queries
+ */
+export function getRecentSearches(limit: number = 5): string[] {
+  if (!db) return [];
+
+  try {
+    const rows = db.getAllSync<{ query: string }>(
+      'SELECT query FROM recent_searches ORDER BY used_at DESC LIMIT ?',
+      [limit]
+    );
+
+    return rows.map((row) => row.query);
+  } catch (error) {
+    console.error('Get recent searches error:', error);
+    return [];
+  }
+}
+
+/**
+ * Add or refresh a recent search query and keep only latest N entries
+ * @param query Search query
+ * @param max Max number of entries to retain
+ */
+export function upsertRecentSearch(query: string, max: number = 5): void {
+  if (!db) return;
+
+  try {
+    const now = Date.now();
+    const normalized = query.trim();
+    if (!normalized) return;
+
+    db.runSync(
+      `INSERT INTO recent_searches (query, used_at) VALUES (?, ?)
+       ON CONFLICT(query) DO UPDATE SET used_at = excluded.used_at`,
+      [normalized, now]
+    );
+
+    db.runSync(
+      `DELETE FROM recent_searches
+       WHERE query NOT IN (
+         SELECT query FROM recent_searches ORDER BY used_at DESC LIMIT ?
+       )`,
+      [max]
+    );
+  } catch (error) {
+    console.error('Upsert recent search error:', error);
+  }
+}
+
+/**
+ * Remove a single recent search query
+ * @param query Search query
+ */
+export function removeRecentSearch(query: string): void {
+  if (!db) return;
+
+  try {
+    db.runSync('DELETE FROM recent_searches WHERE query = ?', [query]);
+  } catch (error) {
+    console.error('Remove recent search error:', error);
   }
 }
 

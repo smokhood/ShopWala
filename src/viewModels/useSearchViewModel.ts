@@ -3,7 +3,11 @@
  */
 import type { ProductWithShop } from '@models/Product';
 import type { Shop } from '@models/Shop';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+    getRecentSearches as getRecentSearchesFromDB,
+    removeRecentSearch as removeRecentSearchFromDB,
+    upsertRecentSearch,
+} from '@services/offlineService';
 import { searchProductsNearby } from '@services/productService';
 import * as shopService from '@services/shopService';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -17,7 +21,6 @@ interface ShopWithProducts extends Shop {
   distanceKm?: number;
 }
 
-const RECENT_SEARCHES_KEY = 'dukandar-recent-searches';
 const MAX_RECENT_SEARCHES = 5;
 
 const TRENDING_SEARCHES = [
@@ -55,28 +58,11 @@ export function useSearchViewModel() {
   }, []);
 
   /**
-   * Load recent searches from AsyncStorage
+   * Load recent searches from SQLite cache
    */
-  const loadRecentSearches = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
-      if (stored) {
-        setRecentSearches(JSON.parse(stored));
-      }
-    } catch (error) {
-      console.error('Load recent searches error:', error);
-    }
-  };
-
-  /**
-   * Save recent searches to AsyncStorage
-   */
-  const saveRecentSearches = async (searches: string[]) => {
-    try {
-      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches));
-    } catch (error) {
-      console.error('Save recent searches error:', error);
-    }
+  const loadRecentSearches = () => {
+    const searches = getRecentSearchesFromDB(MAX_RECENT_SEARCHES);
+    setRecentSearches(searches);
   };
 
   /**
@@ -205,7 +191,7 @@ export function useSearchViewModel() {
     updated = updated.slice(0, MAX_RECENT_SEARCHES);
 
     setRecentSearches(updated);
-    saveRecentSearches(updated);
+    upsertRecentSearch(trimmed, MAX_RECENT_SEARCHES);
   };
 
   /**
@@ -214,7 +200,7 @@ export function useSearchViewModel() {
   const removeRecentSearch = (searchQuery: string) => {
     const updated = recentSearches.filter((s) => s !== searchQuery);
     setRecentSearches(updated);
-    saveRecentSearches(updated);
+    removeRecentSearchFromDB(searchQuery);
   };
 
   /**

@@ -1,6 +1,3 @@
-/**
- * Root Layout - App entry point with providers and auth guard
- */
 import {
     Inter_400Regular,
     Inter_500Medium,
@@ -13,6 +10,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
 import { initI18n } from '../src/i18n';
@@ -35,7 +33,7 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const { user, isLoading, isAuthenticated, hasCompletedOnboarding } = useAuthStore();
+  const { user, isLoading, isAuthenticated, hasCompletedOnboarding, resetAuthState, logAuthState, finishRehydration } = useAuthStore();
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -49,11 +47,25 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // In development, reset auth state to test auth flow
+        if (__DEV__) {
+          console.log('🧪 [DEV MODE] Resetting auth state...');
+          // Uncomment below line to reset auth on every app start (for testing):
+          await resetAuthState();
+        }
+
         // Initialize i18n
         await initI18n();
 
         // Initialize SQLite database
         await initDB();
+
+        console.log('✅ App initialized');
+        logAuthState();
+
+        // Signal that rehydration is complete
+        // This allows auth guard to run
+        finishRehydration();
       } catch (error) {
         console.error('App initialization error:', error);
       }
@@ -62,8 +74,15 @@ export default function RootLayout() {
     initializeApp();
   }, []);
 
-  // Hide splash screen when ready
+  // Hide splash screen when ready AND auth state determined
   useEffect(() => {
+    console.log('[Loading State]', {
+      fontsLoaded,
+      isLoading,
+      isAuthenticated,
+      userRole: user?.role,
+    });
+
     if (fontsLoaded && !isLoading) {
       SplashScreen.hideAsync();
     }
@@ -71,7 +90,12 @@ export default function RootLayout() {
 
   // Auth guard - redirect based on auth state
   useEffect(() => {
-    if (isLoading || !fontsLoaded) {
+    // Don't run auth guard while loading fonts or rehydrating
+    if (!fontsLoaded || isLoading) {
+      console.log('[Auth Guard] Waiting for fonts/rehydration', {
+        fontsLoaded,
+        isLoading,
+      });
       return;
     }
 
@@ -79,20 +103,38 @@ export default function RootLayout() {
     const inCustomerGroup = segments[0] === '(customer)';
     const inOwnerGroup = segments[0] === '(owner)';
 
+    console.log('[Auth Guard] Running', {
+      isAuthenticated,
+      userRole: user?.role,
+      currentSegment: segments[0],
+      inAuthGroup,
+      inCustomerGroup,
+      inOwnerGroup,
+    });
+
     if (!isAuthenticated) {
       // Not authenticated → redirect to auth
+      console.log('[Redirect] Not authenticated → /(auth)/role-select');
       if (!inAuthGroup) {
         router.replace('/(auth)/role-select');
       }
     } else if (isAuthenticated && user) {
       // Authenticated
-      if (!user.role || user.role === 'customer') {
+      if (!user.role) {
+        // No role yet
+        console.log('[Redirect] Authenticated but no role → /(auth)/role-select');
+        if (!inAuthGroup) {
+          router.replace('/(auth)/role-select');
+        }
+      } else if (user.role === 'customer') {
         // Customer role
+        console.log('[Redirect] Customer role → /(customer)');
         if (!inCustomerGroup && !inAuthGroup) {
           router.replace('/(customer)');
         }
       } else if (user.role === 'owner') {
         // Owner role
+        console.log('[Redirect] Owner role → /(owner)/dashboard');
         if (!inOwnerGroup && !inAuthGroup) {
           router.replace('/(owner)/dashboard');
         }
@@ -100,9 +142,11 @@ export default function RootLayout() {
     }
   }, [isAuthenticated, user, segments, isLoading, fontsLoaded]);
 
-  // Show nothing while loading
+  // Show blank screen while fonts/auth loading
   if (!fontsLoaded || isLoading) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#16a34a' }} />
+    );
   }
 
   return (

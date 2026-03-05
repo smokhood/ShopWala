@@ -46,6 +46,13 @@ export const changeLanguage = async (language: 'en' | 'ur'): Promise<void> => {
   await i18n.changeLanguage(language);
 };
 
+// Initialization function (i18n is initialized at module import time)
+export const initI18n = async (): Promise<void> => {
+  // i18n is already initialized when this module is imported
+  // This function exists for explicit initialization/setup in the app root
+  return Promise.resolve();
+};
+
 // Helper function to get current language
 export const getCurrentLanguage = (): string => {
   return i18n.language;

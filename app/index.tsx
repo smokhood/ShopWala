@@ -45,27 +45,14 @@ export default function SplashScreen() {
 
     taglineOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
 
-    // Wait for auth check and animations, then redirect
-    const redirectTimer = setTimeout(() => {
+    // Fade out after animation completes
+    // Auth routing is handled by root layout's auth guard
+    const fadeTimer = setTimeout(() => {
       containerOpacity.value = withTiming(0, { duration: 300 });
-
-      setTimeout(() => {
-        if (!isLoading) {
-          if (!isAuthenticated) {
-            router.replace('/(auth)/role-select');
-          } else if (user) {
-            if (user.role === 'owner') {
-              router.replace('/(owner)/dashboard');
-            } else {
-              router.replace('/(customer)');
-            }
-          }
-        }
-      }, 300);
     }, 2000);
 
-    return () => clearTimeout(redirectTimer);
-  }, [isAuthenticated, user, isLoading]);
+    return () => clearTimeout(fadeTimer);
+  }, []);
 
   return (
     <Animated.View

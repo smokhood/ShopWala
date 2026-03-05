@@ -7,12 +7,19 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     Alert,
+    Platform,
     Pressable,
     RefreshControl,
     ScrollView,
     Text,
     View,
 } from 'react-native';
+// MapView requires native modules - only available in development builds, not in Expo Go
+// To use MapView, create a development build: npx eas build --platform android --profile preview
+const MapView: any = null;
+const Marker: any = null;
+const Callout: any = null;
+
 import { CategoryFilter } from '../../src/components/CategoryFilter';
 import { EmptyState } from '../../src/components/EmptyState';
 import { SearchBar } from '../../src/components/SearchBar';
@@ -90,7 +97,13 @@ export default function CustomerHome() {
 
   // Handle shop press
   const handleShopPress = (shopId: string) => {
-    router.push(`/(customer)/shop/${shopId}` as any);
+    // TODO: Implement shop detail screen (Feature 07)
+    Alert.alert(
+      'جلد آ رہا ہے',
+      'دکان کی تفصیلات والا صفحہ جلد دستیاب ہوگا',
+      [{ text: 'ٹھیک ہے' }]
+    );
+    // router.push(`/(customer)/shop/${shopId}` as any);
   };
 
   // Handle WhatsApp press
@@ -262,18 +275,20 @@ export default function CustomerHome() {
                     color={viewMode === 'list' ? 'white' : '#6b7280'}
                   />
                 </Pressable>
-                <Pressable
-                  onPress={() => setViewMode('map')}
-                  className={`p-2 rounded-lg ml-2 ${
-                    viewMode === 'map' ? 'bg-primary' : 'bg-gray-100'
-                  }`}
-                >
-                  <Ionicons
-                    name="map"
-                    size={16}
-                    color={viewMode === 'map' ? 'white' : '#6b7280'}
-                  />
-                </Pressable>
+                {MapView && (
+                  <Pressable
+                    onPress={() => setViewMode('map')}
+                    className={`p-2 rounded-lg ml-2 ${
+                      viewMode === 'map' ? 'bg-primary' : 'bg-gray-100'
+                    }`}
+                  >
+                    <Ionicons
+                      name="map"
+                      size={16}
+                      color={viewMode === 'map' ? 'white' : '#6b7280'}
+                    />
+                  </Pressable>
+                )}
               </View>
             </View>
 
@@ -286,6 +301,58 @@ export default function CustomerHome() {
               </View>
             ) : filteredShops.length === 0 ? (
               <EmptyState variant="no_shops" />
+            ) : viewMode === 'map' ? (
+              MapView ? (
+                <View className="px-6 pb-6" style={{ minHeight: 500 }}>
+                  <MapView
+                    style={{ height: 420, borderRadius: 16 }}
+                    initialRegion={{
+                      latitude: location?.lat || 31.5204,
+                      longitude: location?.lng || 74.3587,
+                      latitudeDelta: 0.03,
+                      longitudeDelta: 0.03,
+                    }}
+                    showsUserLocation
+                    showsMyLocationButton={Platform.OS === 'android'}
+                  >
+                    {filteredShops.map((shop) => (
+                      <Marker
+                        key={shop.id}
+                        coordinate={{
+                          latitude: shop.location.latitude,
+                          longitude: shop.location.longitude,
+                        }}
+                        pinColor={shop.isOpen ? '#16a34a' : '#dc2626'}
+                      >
+                        <Callout onPress={() => handleShopPress(shop.id)}>
+                          <View style={{ minWidth: 160 }}>
+                            <Text className="font-semibold text-gray-900">{shop.name}</Text>
+                            <Text className="text-xs text-gray-600 mt-1">
+                              {shop.category} • {shop.isOpen ? 'کھلا' : 'بند'}
+                            </Text>
+                          </View>
+                        </Callout>
+                      </Marker>
+                    ))}
+                  </MapView>
+                </View>
+              ) : (
+                <View className="px-6 pb-6 items-center justify-center" style={{ minHeight: 500 }}>
+                  <Ionicons name="map" size={48} color="#d1d5db" />
+                  <Text className="text-gray-600 text-center mt-4">
+                    نقشہ دیکھنے کے لیے Development Build کی ضرورت ہے
+                  </Text>
+                  <Text className="text-gray-500 text-center text-sm mt-2">
+                    فہرست میں تبدیل کرنے کے لیے نیچے بٹن دبائیں
+                  </Text>
+                  <Pressable
+                    onPress={() => setViewMode('list')}
+                    className="mt-4 bg-primary px-6 py-2 rounded-lg"
+                  >
+                    <Text className="text-white font-semibold">فہرست دیکھیں</Text>
+                  </Pressable>
+                </View>
+              )
             ) : (
               <View className="px-6 pb-6" style={{ minHeight: 500 }}>
                 <FlashList

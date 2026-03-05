@@ -1,0 +1,53 @@
+/**
+ * FIRESTORE SECURITY RULES - Copy this exactly
+ * 
+ * Go to: Firebase Console → Firestore Database → Rules
+ * Delete everything and paste this entire content
+ * Then click PUBLISH
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow all authenticated users to read shops
+    match /shops/{shopId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == resource.data.ownerId;
+      allow create: if request.auth != null && request.auth.customClaims.role == 'owner';
+      
+      // Allow reading products in shops
+      match /products/{productId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId;
+      }
+    }
+
+    // Users can read/write their own documents
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || request.auth != null;
+      allow write: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+    }
+
+    // Deals - everyone read, owners write
+    match /deals/{dealId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == resource.data.ownerId;
+    }
+
+    // Notifications - only user can read/write their own
+    match /notifications/{notificationId} {
+      allow read: if request.auth.uid == resource.data.userId;
+      allow write: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth.uid == request.auth.uid;
+    }
+
+    // Orders - customers and owners access their orders
+    match /orders/{orderId} {
+      allow read: if request.auth.uid == resource.data.customerId || request.auth.uid == resource.data.ownerId;
+      allow create: if request.auth != null;
+      allow update: if request.auth.uid == resource.data.customerId || request.auth.uid == resource.data.ownerId;
+    }
+  }
+}

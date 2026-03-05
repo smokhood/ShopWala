@@ -16,7 +16,7 @@ export default function AuthLayout() {
       if (user.role === 'owner') {
         router.replace('/(owner)/dashboard');
       } else {
-        router.replace('/(customer)/home');
+        router.replace('/(customer)');
       }
     }
   }, [isAuthenticated, user]);

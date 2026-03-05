@@ -1,6 +1,7 @@
 /**
  * CategoryFilter Component - Horizontal scrollable category chips
  */
+import { SHOP_CATEGORIES } from '@constants/categories';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, Text } from 'react-native';
 import Animated, {
@@ -8,19 +9,6 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
-
-const CATEGORIES = [
-  { id: 'kiryana', nameUrdu: 'کریانہ', icon: 'basket' },
-  { id: 'pharmacy', nameUrdu: 'دوا خانہ', icon: 'medical' },
-  { id: 'sabzi', nameUrdu: 'سبزی', icon: 'leaf' },
-  { id: 'bakery', nameUrdu: 'بیکری', icon: 'cafe' },
-  { id: 'mobile', nameUrdu: 'موبائل', icon: 'phone-portrait' },
-  { id: 'clothing', nameUrdu: 'کپڑے', icon: 'shirt' },
-  { id: 'hardware', nameUrdu: 'ہارڈویئر', icon: 'construct' },
-  { id: 'beauty', nameUrdu: 'بیوٹی', icon: 'cut' },
-  { id: 'restaurant', nameUrdu: 'ریسٹورنٹ', icon: 'restaurant' },
-  { id: 'other', nameUrdu: 'دیگر', icon: 'ellipsis-horizontal' },
-];
 
 interface CategoryFilterProps {
   selected: string;
@@ -52,7 +40,7 @@ export function CategoryFilter({
         />
       )}
 
-      {CATEGORIES.map((category) => (
+      {SHOP_CATEGORIES.map((category) => (
         <CategoryPill
           key={category.id}
           id={category.id}

@@ -53,6 +53,12 @@ export default function CustomerLayout() {
           // tabBarBadge: 3, // TODO: Connect to actual unread count
         }}
       />
+      <Tabs.Screen
+        name="results"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

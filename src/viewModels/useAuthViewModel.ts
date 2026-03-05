@@ -10,9 +10,9 @@ import { otpSchema, pakistaniPhoneSchema } from '@utils/validators';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import {
-    ConfirmationResult,
-    signInWithPhoneNumber,
-    signOut
+  ConfirmationResult,
+  signInWithPhoneNumber,
+  signOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
@@ -54,48 +54,18 @@ export function useAuthViewModel() {
       const formattedPhone = formatPhone(phone);
       setPhoneNumber(formattedPhone);
 
-      // In development/Expo Go, Firebase Phone Auth requires reCAPTCHA
-      // which doesn't work in React Native. For MVP testing, use mock OTP.
-      // For production, this will work fine.
-      
-      if (__DEV__) {
-        // Development: Use mock OTP for testing
-        const testOtp = '123456'; // Test code
-        console.log('🧪 DEV MODE: Test OTP is:', testOtp);
-        
-        // Create mock confirmation result
-        const mockConfirmation = {
-          confirm: async (otp: string) => {
-            if (otp === testOtp) {
-              return {
-                user: {
-                  uid: 'test-user-' + Date.now(),
-                  phoneNumber: formattedPhone,
-                },
-              };
-            }
-            throw new Error('غلط OTP');
-          },
-        };
-        
-        confirmationResultRef.current = mockConfirmation as any;
-        setOtpSent(true);
-        setCountdown(60);
-        return;
-      }
-
-      // Production: Use real Firebase Phone Auth
+      // Use real Firebase Phone Auth
+      // Note: On Expo Go, this requires development build or Firebase Emulator
+      // For production/testing on native device, this will work directly
       try {
-        const confirmation = await signInWithPhoneNumber(
-          auth,
-          formattedPhone,
-          // @ts-ignore - RecaptchaVerifier is web-only, handled by native
-          undefined
-        );
+        console.log('[Phone Auth] Sending OTP to:', formattedPhone);
+        const confirmation = await signInWithPhoneNumber(auth, formattedPhone);
         confirmationResultRef.current = confirmation;
         setOtpSent(true);
         setCountdown(60);
+        console.log('[Phone Auth] OTP sent successfully');
       } catch (authError: any) {
+        console.error('[Phone Auth] Error:', authError);
         // Provide helpful error messages
         if (authError.code === 'auth/invalid-phone-number') {
           throw new Error('موبائل نمبر درست نہیں');
@@ -103,8 +73,10 @@ export function useAuthViewModel() {
           throw new Error('بہت زیادہ کوششیں، کچھ دیر بعد آزمائیں');
         } else if (authError.code === 'auth/network-request-failed') {
           throw new Error('انٹرنیٹ چیک کریں');
+        } else if (authError.code === 'auth/operation-not-supported-in-this-environment') {
+          throw new Error('Phone Auth requires development build. See docs for setup.');
         } else {
-          throw new Error('OTP بھیجنے میں مسئلہ ہوا');
+          throw new Error(`OTP بھیجنے میں مسئلہ: ${authError.message}`);
         }
       }
     } catch (err: any) {
@@ -134,44 +106,26 @@ export function useAuthViewModel() {
         throw new Error('پہلے OTP بھیجیں');
       }
 
-      // Confirm OTP
+      // Confirm OTP with Firebase
       try {
+        console.log('[Phone Auth] Verifying OTP...');
         const userCredential = await confirmationResultRef.current.confirm(otp);
         const firebaseUser = userCredential.user;
+        console.log('[Phone Auth] OTP verified successfully:', firebaseUser.uid);
 
-        // In development with mock OTP, create mock user without Firestore
-        if (__DEV__ && !firebaseUser.uid.includes('test-user-')) {
-          // Production path - real Firebase user
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+        // Fetch or create user in Firestore
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
 
-          let userData: User;
+        let userData: User;
 
-          if (userDoc.exists()) {
-            // Existing user
-            userData = userDoc.data() as User;
-          } else {
-            // New user - create document
-            userData = {
-              id: firebaseUser.uid,
-              phone: phoneNumber,
-              name: '',
-              role: 'customer',
-              shopId: null,
-              savedShops: [],
-              isOnboarded: false,
-              preferredLanguage: 'ur',
-              createdAt: new Date() as any,
-              updatedAt: new Date() as any,
-            };
-
-            await setDoc(userDocRef, userData);
-          }
-
-          setUser(userData);
+        if (userDoc.exists()) {
+          // Existing user
+          userData = userDoc.data() as User;
+          console.log('[Firestore] Existing user found');
         } else {
-          // Development path with mock OTP - don't access Firestore
-          const mockUser: User = {
+          // New user - create document
+          userData = {
             id: firebaseUser.uid,
             phone: phoneNumber,
             name: '',
@@ -184,19 +138,23 @@ export function useAuthViewModel() {
             updatedAt: new Date() as any,
           };
 
-          setUser(mockUser);
+          await setDoc(userDocRef, userData);
+          console.log('[Firestore] New user created');
         }
+
+        setUser(userData);
 
         // Clear confirmation result
         confirmationResultRef.current = null;
         setOtpSent(false);
       } catch (authError: any) {
+        console.error('[Phone Auth] Verification error:', authError);
         if (authError.code === 'auth/invalid-verification-code') {
           throw new Error('OTP غلط ہے');
         } else if (authError.code === 'auth/code-expired') {
           throw new Error('OTP کی میعاد ختم ہو گئی');
         } else {
-          throw new Error('تصدیق میں ناکامی');
+          throw new Error(`تصدیق میں خرابی: ${authError.message}`);
         }
       }
     } catch (err: any) {
