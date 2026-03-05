@@ -1,0 +1,22 @@
+{
+  "scripts": {
+    "start": "expo start",
+    "start:clear": "expo start --clear",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "prebuild": "expo prebuild",
+    "prebuild:clean": "expo prebuild --clean",
+    
+    "firebase:login": "firebase login",
+    "firebase:init": "firebase init firestore",
+    "firebase:deploy:rules": "firebase deploy --only firestore:rules",
+    "firebase:deploy:all": "firebase deploy",
+    
+    "test:auth": "echo Testing with phone +923001234567 and OTP 123456",
+    
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "type-check": "tsc --noEmit"
+  }
+}

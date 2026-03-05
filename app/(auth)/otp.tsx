@@ -3,6 +3,8 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import type { UserRole } from '@models/User';
+import { app } from '@services/firebase';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
@@ -43,6 +45,7 @@ export default function OTPScreen() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   // OTP input refs
   const otpRefs = useRef<Array<TextInput | null>>([]);
@@ -75,7 +78,7 @@ export default function OTPScreen() {
   const handleSendOTP = async () => {
     try {
       setIsSubmitting(true);
-      await sendOTP(phone);
+      await sendOTP(phone, recaptchaVerifier.current || undefined);
     } catch (err: any) {
       Alert.alert('خرابی', err.message || 'OTP بھیجنے میں ناکامی');
     } finally {
@@ -180,6 +183,11 @@ export default function OTPScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-white"
     >
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifier}
+        firebaseConfig={app.options}
+        attemptInvisibleVerification
+      />
       <ScrollView
         contentContainerClassName="flex-grow"
         keyboardShouldPersistTaps="handled"

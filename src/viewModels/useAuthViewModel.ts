@@ -10,9 +10,10 @@ import { otpSchema, pakistaniPhoneSchema } from '@utils/validators';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
 import {
-  ConfirmationResult,
-  signInWithPhoneNumber,
-  signOut
+    ApplicationVerifier,
+    ConfirmationResult,
+    signInWithPhoneNumber,
+    signOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
@@ -40,7 +41,10 @@ export function useAuthViewModel() {
   /**
    * Send OTP to phone number
    */
-  const sendOTP = async (phone: string): Promise<void> => {
+  const sendOTP = async (
+    phone: string,
+    verifier?: ApplicationVerifier
+  ): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -59,7 +63,10 @@ export function useAuthViewModel() {
       // For production/testing on native device, this will work directly
       try {
         console.log('[Phone Auth] Sending OTP to:', formattedPhone);
-        const confirmation = await signInWithPhoneNumber(auth, formattedPhone);
+        if (!verifier) {
+          throw new Error('reCAPTCHA verifier initialize nahi hua. App restart karke dobara koshish karein.');
+        }
+        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
         confirmationResultRef.current = confirmation;
         setOtpSent(true);
         setCountdown(60);
@@ -76,7 +83,7 @@ export function useAuthViewModel() {
         } else if (authError.code === 'auth/operation-not-supported-in-this-environment') {
           throw new Error('Phone Auth requires development build. See docs for setup.');
         } else {
-          throw new Error(`OTP بھیجنے میں مسئلہ: ${authError.message}`);
+          throw new Error(`OTP بھیجنے میں مسئلہ: ${authError.code || 'unknown'} - ${authError.message}`);
         }
       }
     } catch (err: any) {

@@ -1,12 +1,12 @@
 // Firebase Configuration and Initialization for DukandaR
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
+import { Auth, browserLocalPersistence, initializeAuth } from 'firebase/auth';
 import {
-  Firestore,
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+    Firestore,
+    getFirestore,
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager,
 } from 'firebase/firestore';
 import { FirebaseStorage, getStorage } from 'firebase/storage';
 
@@ -28,9 +28,11 @@ if (getApps().length === 0) {
   app = getApps()[0];
 }
 
-// Initialize Firebase Auth
-// Auth state will persist using browser storage (AsyncStorage on React Native)
-export const auth: Auth = getAuth(app);
+// Initialize Firebase Auth with local persistence
+// Firebase JS SDK on Expo uses browserLocalPersistence/in-memory depending on runtime
+export const auth: Auth = initializeAuth(app, {
+  persistence: browserLocalPersistence,
+});
 
 // Initialize Firestore with offline persistence
 // On React Native, IndexedDB is not available, so we use memory cache as fallback
@@ -56,17 +58,17 @@ export { app };
 
 // Re-export commonly used Firestore functions
     export {
-    addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, GeoPoint, getDoc, getDocs, increment, limit,
-    onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc, where, writeBatch
-  } from 'firebase/firestore';
+        addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, GeoPoint, getDoc, getDocs, increment, limit,
+        onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc, where, writeBatch
+    } from 'firebase/firestore';
 
 // Re-export Firebase Auth functions
 export { onAuthStateChanged, PhoneAuthProvider, signInWithCredential, signInWithPhoneNumber, signOut } from 'firebase/auth';
 
 // Re-export Firebase Storage functions
 export {
-  deleteObject, getDownloadURL, ref as storageRef,
-  uploadBytes,
-  uploadBytesResumable
+    deleteObject, getDownloadURL, ref as storageRef,
+    uploadBytes,
+    uploadBytesResumable
 } from 'firebase/storage';
 
