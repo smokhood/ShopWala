@@ -13,6 +13,7 @@ interface TextInputProps extends RNTextInputProps {
 export function TextInput({
   label,
   error,
+  className,
   ...props
 }: TextInputProps) {
   return (
@@ -24,7 +25,7 @@ export function TextInput({
       )}
       <RNTextInput
         {...props}
-        className="border border-gray-300 rounded-lg p-3 text-gray-700 bg-white"
+        className={`border border-gray-300 rounded-lg p-3 text-gray-700 bg-white ${className ?? ''}`}
         placeholderTextColor="#999"
       />
       {error && (

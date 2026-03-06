@@ -29,10 +29,7 @@ export default function AuthLayout() {
           headerShown: false,
           animation: 'fade',
         }}
-      >
-        <Stack.Screen name="role-select" />
-        <Stack.Screen name="otp" />
-      </Stack>
+      />
     </>
   );
 }

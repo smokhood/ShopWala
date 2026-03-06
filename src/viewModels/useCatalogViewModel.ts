@@ -216,6 +216,7 @@ export function useCatalogViewModel(shop: Shop | null) {
 
     // Mutations
     submitBulkProducts: mutation.mutate,
+    submitBulkProductsAsync: mutation.mutateAsync,
     isSubmittingProducts: mutation.isPending,
     productSubmissionError: mutation.error,
 

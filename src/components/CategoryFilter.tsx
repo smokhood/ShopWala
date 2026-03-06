@@ -25,10 +25,10 @@ export function CategoryFilter({
 }: CategoryFilterProps) {
   return (
     <ScrollView
-      horizontal
+      horizontal={true}
       showsHorizontalScrollIndicator={false}
       className="flex-row"
-      contentContainerClassName="px-6 py-2"
+      contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 8 }}
     >
       {showAll && (
         <CategoryPill

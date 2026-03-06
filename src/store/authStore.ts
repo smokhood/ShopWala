@@ -41,10 +41,13 @@ const secureStorage = {
   },
   setItem: async (name: string, value: string): Promise<void> => {
     try {
-      await SecureStore.setItemAsync(name, value);
+      // Ensure value is a string (defensive check for any serialization issues)
+      const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+      await SecureStore.setItemAsync(name, stringValue);
       console.log(`[SecureStore] setItem(${name}): Success`);
     } catch (error) {
       console.error('SecureStore setItem error:', error);
+      throw error; // Re-throw to help debug issues
     }
   },
   removeItem: async (name: string): Promise<void> => {
@@ -163,7 +166,8 @@ export const useAuthStore = create<AuthStore>()(
       storage: createJSONStorage(() => secureStorage),
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
+        // Don't persist isAuthenticated - it's derived from user
+        // Don't persist hasCompletedOnboarding - it's derived from user.isOnboarded
       }),
       // Note: onRehydrateStorage doesn't work reliably for our use case
       // Instead, we manually call finishRehydration() in root layout

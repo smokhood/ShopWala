@@ -98,7 +98,7 @@ export function RatingSheet({
             value={note}
             onChangeText={setNote}
             maxLength={120}
-            multiline
+            multiline={true}
             numberOfLines={3}
             className="border border-gray-300 rounded-lg p-4 mb-6 text-gray-800"
             textAlignVertical="top"

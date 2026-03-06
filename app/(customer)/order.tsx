@@ -285,7 +285,7 @@ export default function OrderScreen() {
             value={noteText}
             onChangeText={handleNoteChange}
             placeholder="اپنا نوٹ یہاں لکھیں..."
-            multiline
+            multiline={true}
             numberOfLines={3}
             maxLength={200}
             className="bg-gray-50 rounded-lg p-3 text-gray-900 text-base"

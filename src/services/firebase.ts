@@ -1,13 +1,8 @@
 // Firebase Configuration and Initialization for DukandaR
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, browserLocalPersistence, initializeAuth } from 'firebase/auth';
-import {
-    Firestore,
-    getFirestore,
-    initializeFirestore,
-    persistentLocalCache,
-    persistentMultipleTabManager,
-} from 'firebase/firestore';
+import * as FirebaseAuth from 'firebase/auth';
+import { Firestore, getFirestore } from 'firebase/firestore';
 import { FirebaseStorage, getStorage } from 'firebase/storage';
 
 // Firebase configuration from environment variables
@@ -28,27 +23,35 @@ if (getApps().length === 0) {
   app = getApps()[0];
 }
 
-// Initialize Firebase Auth with local persistence
-// Firebase JS SDK on Expo uses browserLocalPersistence/in-memory depending on runtime
-export const auth: Auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-});
+// Initialize Auth in RN-safe way.
+// Some SDK builds expose getReactNativePersistence via runtime export only,
+// so we access it dynamically and fall back to getAuth(app) for compatibility.
+const {
+  getAuth,
+  initializeAuth,
+} = FirebaseAuth;
 
-// Initialize Firestore with offline persistence
-// On React Native, IndexedDB is not available, so we use memory cache as fallback
-let db: Firestore;
+type Auth = FirebaseAuth.Auth;
+let auth: Auth;
 try {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
-  });
-} catch (error) {
-  // Fallback to memory cache if persistent cache fails (common on React Native)
-  console.warn('Persistent cache failed, using memory cache:', (error as Error).message);
-  db = getFirestore(app);
+  const getReactNativePersistence = (FirebaseAuth as any).getReactNativePersistence as
+    | ((storage: typeof AsyncStorage) => any)
+    | undefined;
+
+  if (typeof getReactNativePersistence === 'function') {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } else {
+    auth = getAuth(app);
+  }
+} catch {
+  auth = getAuth(app);
 }
-export { db };
+export { auth };
+
+// Use default Firestore instance on React Native to avoid IndexedDB cache warnings.
+export const db: Firestore = getFirestore(app);
 
 // Initialize Firebase Storage
 export const storage: FirebaseStorage = getStorage(app);

@@ -6,6 +6,7 @@
 
 import { useAuthStore } from '@store/authStore';
 import { useOwnerDashViewModel } from '@viewModels/useOwnerDashViewModel';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -19,6 +20,7 @@ import {
 import { CustomButton } from '../../src/components/CustomButton';
 
 export default function OwnerDashboardScreen() {
+    const router = useRouter();
   const { user } = useAuthStore();
   const {
     dashStats,
@@ -43,8 +45,16 @@ export default function OwnerDashboardScreen() {
   if (!dashStats.shop) {
     return (
       <View className="flex-1 items-center justify-center bg-white p-4">
-        <Text className="text-gray-600 mb-4">Shop not found</Text>
-        <CustomButton title="Register Shop" onPress={() => {}} />
+        <Text className="text-xl font-semibold text-gray-800 mb-2">
+          دکان رجسٹر کریں
+        </Text>
+        <Text className="text-gray-600 mb-4 text-center">
+          اپنی دکان رجسٹر کریں اور گاہکوں تک پہنچیں
+        </Text>
+        <CustomButton 
+          title="Register Shop" 
+          onPress={() => router.push('/(owner)/register-shop')} 
+        />
       </View>
     );
   }
@@ -81,19 +91,10 @@ export default function OwnerDashboardScreen() {
           </View>
           <View className="px-2 py-1 rounded-full bg-blue-100">
             <Text className="text-xs font-medium text-blue-600">
-              {dashStats.shop.isVerified ? 'VERIFIED' : 'UNVERIFIED'}
+              ACTIVE
             </Text>
           </View>
         </View>
-
-        {/* Verification Banner */}
-        {!dashStats.shop.isVerified && (
-          <View className="bg-yellow-50 p-3 rounded-lg flex-row items-center">
-            <Text className="ml-2 text-sm text-yellow-800 flex-1">
-              ⚠️ Waiting for verification. This usually takes 24-48 hours.
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Stats Cards */}

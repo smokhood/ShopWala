@@ -10,13 +10,12 @@ import {
     getDoc,
     getDocs,
     increment,
-    orderBy,
     query,
     serverTimestamp,
     Timestamp,
     updateDoc,
     where,
-    writeBatch,
+    writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { getShopsNearby } from './shopService';
@@ -151,6 +150,25 @@ export async function getProductsByShop(shopId: string): Promise<Product[]> {
 }
 
 /**
+ * Get all products for owner management (includes inactive products)
+ * @param shopId Shop ID
+ */
+export async function getProductsByShopForOwner(shopId: string): Promise<Product[]> {
+  try {
+    const q = query(
+      collection(db, PRODUCTS_COLLECTION),
+      where('shopId', '==', shopId)
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+  } catch (error) {
+    console.error('Get owner products by shop error:', error);
+    throw error;
+  }
+}
+
+/**
  * Get products by category for a shop
  * @param shopId Shop ID
  * @param category Product category
@@ -271,6 +289,36 @@ export async function updateProductPrice(
     });
   } catch (error) {
     console.error('Update product price error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update editable product fields from owner panel
+ */
+export async function updateProductDetails(
+  shopId: string,
+  productId: string,
+  updates: {
+    name: string;
+    price: number;
+    inStock: boolean;
+    isActive: boolean;
+  }
+): Promise<void> {
+  try {
+    const productRef = doc(db, PRODUCTS_COLLECTION, productId);
+    await updateDoc(productRef, {
+      name: updates.name,
+      price: updates.price,
+      inStock: updates.inStock,
+      isActive: updates.isActive,
+      stockStatus: updates.inStock ? 'in_stock' : 'out_of_stock',
+      stockVerifiedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Update product details error:', error);
     throw error;
   }
 }
@@ -398,11 +446,11 @@ export async function recordSearch(
 export async function getDemandAlerts(shopId: string): Promise<DemandAlert[]> {
   try {
     // Get recent searches where this shop was nearby
+    // Note: removed orderBy to avoid requiring composite index
     const q = query(
       collection(db, SEARCHES_COLLECTION),
       where('nearbyShopIds', 'array-contains', shopId),
-      orderBy('timestamp', 'desc'),
-      firestoreLimit(100)
+      firestoreLimit(500) // Get more to account for duplicates
     );
 
     const snapshot = await getDocs(q);

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "noImplicitAny": true,
+    "skipLibCheck": true,
     "paths": {
       "@/*": [
         "./*"
@@ -38,6 +39,7 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "nativewind-env.d.ts"
+    "nativewind-env.d.ts",
+    "src/jest.d.ts"
   ]
 }

@@ -10,12 +10,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
+    Dimensions,
     FlatList,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
 import { useAuthStore } from '../../src/store/authStore';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface OnboardingSlide {
   id: string;
@@ -66,8 +69,10 @@ export default function OnboardingScreen() {
 
   const handleNext = useCallback(() => {
     if (activeSlide < slides.length - 1) {
+      const nextIndex = activeSlide + 1;
+      setActiveSlide(nextIndex);
       flatListRef.current?.scrollToIndex({
-        index: activeSlide + 1,
+        index: nextIndex,
         animated: true,
       });
     }
@@ -111,7 +116,7 @@ export default function OnboardingScreen() {
   }, [user, markOnboarded, router]);
 
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (
-    <View className="w-full h-full bg-white items-center justify-center px-6">
+    <View style={{ width: SCREEN_WIDTH }} className="h-full bg-white items-center justify-center px-6">
       {item.illustration}
       <Text className="text-3xl font-bold text-gray-900 text-center mb-4">
         {item.title}
@@ -142,15 +147,11 @@ export default function OnboardingScreen() {
         data={slides}
         renderItem={renderSlide}
         keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
+        horizontal={true}
+        pagingEnabled={true}
         scrollEnabled={false}
         bounces={false}
-        onEndReached={({ distanceFromEnd }) => {
-          const index = Math.round(distanceFromEnd / (slides.length - 1));
-          setActiveSlide(Math.min(index, slides.length - 1));
-        }}
-        scrollEventThrottle={16}
+        showsHorizontalScrollIndicator={false}
       />
 
       {/* Bottom Section */}

@@ -3,8 +3,10 @@
  */
 import type { CartItem } from '@models/Order';
 import type { ProductWithShop } from '@models/Product';
+import * as orderService from '@services/orderService';
 import * as shopService from '@services/shopService';
 import * as whatsappService from '@services/whatsappService';
+import { useAuthStore } from '@store/authStore';
 import { useCartStore } from '@store/cartStore';
 import { useState } from 'react';
 import { Alert } from 'react-native';
@@ -140,6 +142,8 @@ export function useOrderViewModel(): UseOrderViewModelReturn {
    * Send order via WhatsApp
    */
   const sendOrderViaWhatsApp = async (): Promise<void> => {
+    const { user } = useAuthStore.getState();
+    
     try {
       setIsLoading(true);
       setError(null);
@@ -151,6 +155,10 @@ export function useOrderViewModel(): UseOrderViewModelReturn {
       
       if (!shopId || !shopWhatsapp) {
         throw new Error('Shop کی تفصیلات نہیں ملیں');
+      }
+      
+      if (!user?.id) {
+        throw new Error('User not authenticated');
       }
       
       // Build order object
@@ -165,7 +173,10 @@ export function useOrderViewModel(): UseOrderViewModelReturn {
         createdAt: new Date(),
       };
       
-      // Open WhatsApp with order
+      // Save order to Firestore FIRST
+      await orderService.createOrder(order, user.id);
+      
+      // Then open WhatsApp with order
       await whatsappService.openWhatsAppOrder(order);
       
       // Track WhatsApp click

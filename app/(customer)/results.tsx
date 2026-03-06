@@ -6,6 +6,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { flagProductOutOfStock } from '@services/productService';
 import { openWhatsAppOrder } from '@services/whatsappService';
 import { FlashList } from '@shopify/flash-list';
+import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -88,6 +89,7 @@ export default function ResultsScreen() {
   const [selectedItems, setSelectedItems] = useState<Map<string, ProductWithShop>>(new Map());
   const [isOffline, setIsOffline] = useState(false);
   const [cachedResults, setCachedResults] = useState<ProductWithShop[]>([]);
+  const [isFlagging, setIsFlagging] = useState<string | null>(null);
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -283,13 +285,28 @@ export default function ResultsScreen() {
   };
 
   const handleShopPress = (shopId: string) => {
-    // TODO: Implement shop detail screen (Feature 07)
-    Alert.alert(
-      'جلد آ رہا ہے',
-      'دکان کی تفصیلات والا صفحہ جلد دستیاب ہوگا',
-      [{ text: 'ٹھیک ہے' }]
-    );
-    // router.push(`/(customer)/shop/${shopId}` as any);
+    router.push(`/(customer)/shop/${shopId}` as any);
+  };
+
+  const handleShopWhatsApp = async (shop: any) => {
+    try {
+      const phone = String(shop?.whatsapp || '').replace(/[+\s]/g, '');
+      if (!phone) {
+        Alert.alert('خرابی', 'WhatsApp نمبر دستیاب نہیں ہے');
+        return;
+      }
+
+      const message = encodeURIComponent(
+        `السلام علیکم! میں ${shop.name} سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nDukandaR app سے`
+      );
+      const nativeUrl = `whatsapp://send?phone=${phone}&text=${message}`;
+      const webUrl = `https://wa.me/${phone}?text=${message}`;
+
+      const canOpenNative = await Linking.canOpenURL(nativeUrl);
+      await Linking.openURL(canOpenNative ? nativeUrl : webUrl);
+    } catch (error) {
+      Alert.alert('خرابی', 'WhatsApp کھولنے میں ناکام');
+    }
   };
 
   const handleFlagStock = async (productId: string, shopId: string) => {
@@ -298,11 +315,17 @@ export default function ResultsScreen() {
       return;
     }
 
+    const flagKey = `${productId}-${shopId}`;
+    if (isFlagging === flagKey) return;
+
+    setIsFlagging(flagKey);
     try {
       await flagProductOutOfStock(shopId, productId, user.id);
       Alert.alert('شکریہ', 'اسٹاک رپورٹ محفوظ ہو گئی');
     } catch (flagError: any) {
       Alert.alert('خرابی', flagError?.message || 'رپورٹ محفوظ نہیں ہو سکی');
+    } finally {
+      setIsFlagging(null);
     }
   };
 
@@ -366,10 +389,10 @@ export default function ResultsScreen() {
       </View>
 
       <ScrollView
-        horizontal
+        horizontal={true}
         showsHorizontalScrollIndicator={false}
         className="max-h-[58px]"
-        contentContainerClassName="px-4 py-3 items-center"
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center' }}
       >
         {renderSortPill('nearest', 'قریب ترین')}
         {renderSortPill('cheapest', 'سستا')}
@@ -461,9 +484,7 @@ export default function ResultsScreen() {
                       distance: item.shop.distanceKm,
                     }}
                     onPress={() => handleShopPress(item.shop.id)}
-                    onWhatsAppPress={() => {
-                      Alert.alert('WhatsApp', 'یہ فیچر جلد آ رہا ہے');
-                    }}
+                    onWhatsAppPress={() => handleShopWhatsApp(item.shop)}
                   />
                 </View>
               );
@@ -502,7 +523,7 @@ export default function ResultsScreen() {
                 <ShopCard
                   shop={{ ...(item as any), distance: item.distanceKm }}
                   onPress={() => handleShopPress(item.id)}
-                  onWhatsAppPress={() => Alert.alert('WhatsApp', 'یہ فیچر جلد آ رہا ہے')}
+                  onWhatsAppPress={() => handleShopWhatsApp(item)}
                 />
 
                 <View className="bg-white rounded-xl mt-2 p-3 border border-gray-100">

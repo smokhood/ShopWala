@@ -20,6 +20,7 @@ const MapView: any = null;
 const Marker: any = null;
 const Callout: any = null;
 
+import * as Linking from 'expo-linking';
 import { CategoryFilter } from '../../src/components/CategoryFilter';
 import { EmptyState } from '../../src/components/EmptyState';
 import { SearchBar } from '../../src/components/SearchBar';
@@ -54,11 +55,13 @@ export default function CustomerHome() {
     search,
     clearSearch,
     refreshShops,
+    removeRecentSearch,
   } = useSearchViewModel();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [refreshing, setRefreshing] = useState(false);
+  const [language, setLanguage] = useState<'en' | 'ur'>('ur');
 
   // Handle search submit
   const handleSearch = (searchQuery: string) => {
@@ -73,7 +76,7 @@ export default function CustomerHome() {
   // Handle category selection
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    // TODO: Filter shops by category
+    // Category filtering is done in the filteredShops computed value below
   };
 
   // Handle trending search tap
@@ -97,13 +100,7 @@ export default function CustomerHome() {
 
   // Handle shop press
   const handleShopPress = (shopId: string) => {
-    // TODO: Implement shop detail screen (Feature 07)
-    Alert.alert(
-      'جلد آ رہا ہے',
-      'دکان کی تفصیلات والا صفحہ جلد دستیاب ہوگا',
-      [{ text: 'ٹھیک ہے' }]
-    );
-    // router.push(`/(customer)/shop/${shopId}` as any);
+    router.push(`/(customer)/shop/${shopId}` as any);
   };
 
   // Handle WhatsApp press
@@ -115,9 +112,16 @@ export default function CustomerHome() {
         { text: 'منسوخ', style: 'cancel' },
         {
           text: 'ہاں',
-          onPress: () => {
-            // TODO: Implement WhatsApp service
-            console.log('Open WhatsApp for shop:', shop.id);
+          onPress: async () => {
+            try {
+              const message = `السلام علیکم! میں ${shop.name} سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nDukandaR app سے`;
+              const encodedMessage = encodeURIComponent(message);
+              const phoneNumber = shop.whatsapp.replace(/[+\s]/g, '');
+              const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodedMessage}`;
+              await Linking.openURL(whatsappUrl);
+            } catch (error) {
+              Alert.alert('خرابی', 'WhatsApp کھولنے میں ناکام');
+            }
           },
         },
       ]
@@ -156,7 +160,7 @@ export default function CustomerHome() {
         <View className="flex-row items-center justify-between mb-4">
           <Pressable
             onPress={() => {
-              Alert.alert('لوکیشن تبدیل کریں', 'Coming soon');
+              refreshLocation();
             }}
             className="flex-row items-center flex-1"
           >
@@ -169,7 +173,7 @@ export default function CustomerHome() {
 
           <Pressable
             onPress={() => {
-              Alert.alert('زبان', 'Coming soon');
+              setLanguage(language === 'en' ? 'ur' : 'en');
             }}
             className="ml-4"
           >
@@ -188,7 +192,13 @@ export default function CustomerHome() {
         {/* Radius Selector */}
         <Pressable
           onPress={() => {
-            Alert.alert('فاصلہ', 'Coming soon');
+            Alert.alert('تلاش کی رینج منتخب کریں', '', [
+              { text: '1 km', onPress: () => updateRadius(1) },
+              { text: '2 km', onPress: () => updateRadius(2) },
+              { text: '5 km', onPress: () => updateRadius(5) },
+              { text: '10 km', onPress: () => updateRadius(10) },
+              { text: 'منسوخ', style: 'cancel' },
+            ]);
           }}
           className="flex-row items-center self-end mt-2"
         >
@@ -231,15 +241,22 @@ export default function CustomerHome() {
               حالیہ تلاش
             </Text>
             {recentSearches.map((item, index) => (
-              <Pressable
-                key={index}
-                onPress={() => handleTrendingSearch(item)}
-                className="flex-row items-center py-2"
-              >
-                <Ionicons name="time" size={16} color="#9ca3af" />
-                <Text className="flex-1 text-gray-700 ml-3">{item}</Text>
-                <Ionicons name="arrow-up-outline" size={16} color="#9ca3af" />
-              </Pressable>
+              <View key={index} className="flex-row items-center py-2">
+                <Pressable
+                  onPress={() => handleTrendingSearch(item)}
+                  className="flex-1 flex-row items-center"
+                >
+                  <Ionicons name="time" size={16} color="#9ca3af" />
+                  <Text className="flex-1 text-gray-700 ml-3">{item}</Text>
+                  <Ionicons name="arrow-up-outline" size={16} color="#9ca3af" />
+                </Pressable>
+                <Pressable
+                  onPress={() => removeRecentSearch(item)}
+                  className="ml-3 p-1"
+                >
+                  <Ionicons name="close-circle" size={18} color="#ef4444" />
+                </Pressable>
+              </View>
             ))}
           </View>
         )}

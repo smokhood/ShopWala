@@ -186,10 +186,10 @@ export default function OTPScreen() {
       <FirebaseRecaptchaVerifierModal
         ref={recaptchaVerifier}
         firebaseConfig={app.options}
-        attemptInvisibleVerification
+        attemptInvisibleVerification={true}
       />
       <ScrollView
-        contentContainerClassName="flex-grow"
+        contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
@@ -231,7 +231,7 @@ export default function OTPScreen() {
                   maxLength={10}
                   value={phone}
                   onChangeText={handlePhoneChange}
-                  autoFocus
+                  autoFocus={true}
                 />
               </View>
 

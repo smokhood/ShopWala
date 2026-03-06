@@ -1,33 +1,81 @@
 // Notification Service for DukandaR
 import { Deal } from '@models/Deal';
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Lazy load notifications only when needed to avoid Expo Go issues
+let NotificationsModule: typeof import('expo-notifications') | null = null;
+let notificationHandlerSetup = false;
+
+async function getNotificationsModule() {
+  if (NotificationsModule === null) {
+    try {
+      NotificationsModule = await import('expo-notifications');
+    } catch (error) {
+      console.warn('Failed to load notifications module:', (error as Error).message);
+      return null;
+    }
+  }
+  return NotificationsModule;
+}
+
+// Setup notification handler (call this when actually using notifications)
+async function setupNotificationHandler() {
+  if (notificationHandlerSetup) return;
+  
+  try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return;
+
+    // Skip notification setup in Expo Go on Android
+    if (Platform.OS === 'android' && Constants.appOwnership === 'expo') {
+      return;
+    }
+
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    
+    notificationHandlerSetup = true;
+  } catch (error) {
+    console.warn('Notification configuration warning:', (error as Error).message);
+  }
+}
 
 /**
  * Request notification permission
- * @returns True if granted
+ * @returns True if granted (false in Expo Go for Android)
  */
 export async function requestPermission(): Promise<boolean> {
   try {
+    // Skip on Android in Expo Go as push notifications are not available
+    if (Platform.OS === 'android' && Constants.appOwnership === 'expo') {
+      return false;
+    }
+
+    // Setup handler when actually requesting permissions
+    await setupNotificationHandler();
+
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return false;
+
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#16a34a',
-      });
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#16a34a',
+        });
+      } catch (error) {
+        console.warn('Notification channel setup warning:', (error as Error).message);
+      }
     }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -40,7 +88,7 @@ export async function requestPermission(): Promise<boolean> {
 
     return finalStatus === 'granted';
   } catch (error) {
-    console.error('Request notification permission error:', error);
+    console.warn('Request notification permission warning:', (error as Error).message);
     return false;
   }
 }
@@ -57,21 +105,35 @@ export async function getExpoPushToken(): Promise<string | null> {
       return null;
     }
 
+    // Skip on Android in Expo Go as it's not supported
+    if (Platform.OS === 'android' && Constants.appOwnership === 'expo') {
+      console.log('Push notifications not available in Expo Go on Android');
+      return null;
+    }
+
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return null;
+
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
     if (!projectId) {
       console.log('No project ID found');
       return null;
     }
 
-    const token = (
-      await Notifications.getExpoPushTokenAsync({
-        projectId,
-      })
-    ).data;
+    try {
+      const token = (
+        await Notifications.getExpoPushTokenAsync({
+          projectId,
+        })
+      ).data;
 
-    return token;
+      return token;
+    } catch (tokenError) {
+      console.warn('Could not get push token (may not be supported in current environment):', (tokenError as Error).message);
+      return null;
+    }
   } catch (error) {
-    console.error('Get Expo push token error:', error);
+    console.warn('Get Expo push token warning:', (error as Error).message);
     return null;
   }
 }
@@ -89,6 +151,11 @@ export async function scheduleLocalNotification(
   seconds: number | null = null
 ): Promise<string> {
   try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) {
+      throw new Error('Notifications module not available');
+    }
+
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         title,
@@ -156,6 +223,8 @@ export async function scheduleStockReminderForOwner(
  */
 export async function cancelNotification(id: string): Promise<void> {
   try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return;
     await Notifications.cancelScheduledNotificationAsync(id);
   } catch (error) {
     console.error('Cancel notification error:', error);
@@ -167,6 +236,8 @@ export async function cancelNotification(id: string): Promise<void> {
  */
 export async function cancelAllNotifications(): Promise<void> {
   try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (error) {
     console.error('Cancel all notifications error:', error);

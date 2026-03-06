@@ -40,17 +40,28 @@ service cloud.firestore {
     
     // Products collection
     match /products/{productId} {
-      // Anyone can read active products
-      allow read: if resource.data.isActive == true;
-      
       // Get shop owner from shop document
       function getShopOwnerId() {
         return get(/databases/$(database)/documents/shops/$(resource.data.shopId)).data.ownerId;
       }
+
+      // Customers can only submit stock flags (no pricing/name/shop edits)
+      function canCustomerFlagStock() {
+        let changed = request.resource.data.diff(resource.data).changedKeys();
+        return isAuthenticated()
+          && changed.hasOnly(['flagCount', 'stockStatus', 'updatedAt'])
+          && request.resource.data.flagCount == resource.data.flagCount + 1
+          && (!changed.hasAny(['stockStatus']) || request.resource.data.stockStatus == 'unverified');
+      }
+      
+      // Anyone can read active products
+      // Shop owners can read all their own products (active or inactive)
+      allow read: if resource.data.isActive == true || (isAuthenticated() && isShopOwner(getShopOwnerId()));
       
       // Only shop owner can write products
       allow create: if isAuthenticated();
-      allow update, delete: if isShopOwner(getShopOwnerId());
+      allow update: if isShopOwner(getShopOwnerId()) || canCustomerFlagStock();
+      allow delete: if isShopOwner(getShopOwnerId());
       
       // Validate product data
       allow write: if request.resource.data.keys().hasAll([
@@ -60,9 +71,9 @@ service cloud.firestore {
     
     // Deals collection
     match /deals/{dealId} {
-      // Anyone can read active, non-expired deals
-      allow read: if resource.data.isActive == true 
-                  && resource.data.expiresAt > request.time;
+      // Anyone can read active deals
+      // Expiry is filtered in app queries to avoid request.time query-rule mismatch
+      allow read: if resource.data.isActive == true;
       
       // Get shop owner from shop document
       function getDealShopOwnerId() {
@@ -81,8 +92,9 @@ service cloud.firestore {
     
     // Searches collection (for demand tracking)
     match /searches/{searchId} {
-      // No one can read searches (analytics only)
-      allow read: if false;
+      // Authenticated users can read searches
+      // Shop owners will filter by their shopId in the app layer
+      allow read: if isAuthenticated();
       
       // Authenticated users can create search records
       allow create: if isAuthenticated();
@@ -102,6 +114,30 @@ service cloud.firestore {
       // Users can update their own notifications (mark as read)
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
       
+      // No deletes
+      allow delete: if false;
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      // Resolve current user's shopId once for owner checks
+      function currentUserShopId() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
+      }
+
+      // Customers can read their own orders
+      // Shop owners can read orders for their own shop
+      allow read: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.shopId == currentUserShopId()
+      );
+
+      // Authenticated customers can create orders
+      allow create: if isAuthenticated() && request.resource.data.customerId == request.auth.uid;
+
+      // Shop owners can update orders of their own shop (status, notes, etc.)
+      allow update: if isAuthenticated() && resource.data.shopId == currentUserShopId();
+
       // No deletes
       allow delete: if false;
     }

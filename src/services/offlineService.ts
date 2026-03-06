@@ -22,7 +22,7 @@ export function initDB(): void {
       return;
     }
 
-    // Create tables if not exist
+    // Execute all CREATE TABLE statements
     db.execSync(`
       CREATE TABLE IF NOT EXISTS cached_shops (
         id TEXT PRIMARY KEY,
@@ -48,13 +48,21 @@ export function initDB(): void {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL,
         data TEXT NOT NULL,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
+        retry_count INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS user_preferences (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
       );
 
       CREATE INDEX IF NOT EXISTS idx_shops_geohash ON cached_shops(geohash);
       CREATE INDEX IF NOT EXISTS idx_shops_cached_at ON cached_shops(cached_at);
       CREATE INDEX IF NOT EXISTS idx_searches_cached_at ON cached_searches(cached_at);
       CREATE INDEX IF NOT EXISTS idx_recent_searches_used_at ON recent_searches(used_at);
+      CREATE INDEX IF NOT EXISTS idx_pending_actions_created_at ON pending_actions(created_at);
     `);
 
     console.log('✅ SQLite database initialized');
@@ -320,11 +328,127 @@ export function addPendingAction(type: string, data: any): void {
 
   try {
     db.runSync(
-      'INSERT INTO pending_actions (type, data, created_at) VALUES (?, ?, ?)',
-      [type, JSON.stringify(data), Date.now()]
+      'INSERT INTO pending_actions (type, data, created_at, retry_count) VALUES (?, ?, ?, ?)',
+      [type, JSON.stringify(data), Date.now(), 0]
     );
   } catch (error) {
     console.error('Add pending action error:', error);
+  }
+}
+
+/**
+ * Increment retry count for a pending action
+ * @param id Action ID
+ */
+export function incrementPendingActionRetry(id: number): void {
+  if (!db) return;
+
+  try {
+    db.runSync(
+      'UPDATE pending_actions SET retry_count = retry_count + 1 WHERE id = ?',
+      [id]
+    );
+  } catch (error) {
+    console.error('Increment retry count error:', error);
+  }
+}
+
+/**
+ * Set user preference
+ * @param key Preference key
+ * @param value Preference value
+ */
+export function setUserPreference(key: string, value: any): void {
+  if (!db) return;
+
+  try {
+    db.runSync(
+      'INSERT OR REPLACE INTO user_preferences (key, value, updated_at) VALUES (?, ?, ?)',
+      [key, JSON.stringify(value), Date.now()]
+    );
+  } catch (error) {
+    console.error('Set user preference error:', error);
+  }
+}
+
+/**
+ * Get user preference
+ * @param key Preference key
+ * @returns Preference value or null
+ */
+export function getUserPreference(key: string): any | null {
+  if (!db) return null;
+
+  try {
+    const row = db.getFirstSync<{ value: string }>(
+      'SELECT value FROM user_preferences WHERE key = ?',
+      [key]
+    );
+
+    if (row) {
+      return JSON.parse(row.value);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Get user preference error:', error);
+    return null;
+  }
+}
+
+/**
+ * Get all user preferences
+ * @returns Object with all preferences
+ */
+export function getAllUserPreferences(): Record<string, any> {
+  if (!db) return {};
+
+  try {
+    const rows = db.getAllSync<{ key: string; value: string }>(
+      'SELECT key, value FROM user_preferences'
+    );
+
+    const prefs: Record<string, any> = {};
+    rows.forEach((row) => {
+      prefs[row.key] = JSON.parse(row.value);
+    });
+
+    return prefs;
+  } catch (error) {
+    console.error('Get all preferences error:', error);
+    return {};
+  }
+}
+
+/**
+ * Delete user preference
+ * @param key Preference key
+ */
+export function deleteUserPreference(key: string): void {
+  if (!db) return;
+
+  try {
+    db.runSync('DELETE FROM user_preferences WHERE key = ?', [key]);
+  } catch (error) {
+    console.error('Delete user preference error:', error);
+  }
+}
+
+/**
+ * Clear all caches and preferences (for logout/reset)
+ */
+export function clearAllData(): void {
+  if (!db) return;
+
+  try {
+    db.runSync('DELETE FROM cached_shops');
+    db.runSync('DELETE FROM cached_searches');
+    db.runSync('DELETE FROM recent_searches');
+    db.runSync('DELETE FROM pending_actions');
+    db.runSync('DELETE FROM user_preferences');
+    console.log('✅ All offline data cleared');
+  } catch (error) {
+    console.error('Clear all data error:', error);
   }
 }
 

@@ -12,7 +12,7 @@ export default function OnboardingLayout() {
       screenOptions={{
         headerShown: false,
         animationEnabled: true,
-        animationTypeForReplace: true,
+        animationTypeForReplace: 'push',
       }}
     >
       <Stack.Screen name="index" />

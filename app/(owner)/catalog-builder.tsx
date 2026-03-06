@@ -8,7 +8,9 @@ import { bakeryTemplate } from '@constants/templates/bakery';
 import { kiryanaTemplate } from '@constants/templates/kiryana';
 import { pharmacyTemplate } from '@constants/templates/pharmacy';
 import { sabziTemplate } from '@constants/templates/sabzi';
+import { getShopById } from '@services/shopService';
 import { useAuthStore } from '@store/authStore';
+import { useQuery } from '@tanstack/react-query';
 import { useCatalogViewModel } from '@viewModels/useCatalogViewModel';
 import { useMemo, useState } from 'react';
 import {
@@ -39,6 +41,17 @@ const templates: TemplateOption[] = [
 
 export default function CatalogBuilderScreen() {
   const { user } = useAuthStore();
+
+    // Fetch shop data
+    const { data: shop, isLoading: isLoadingShop } = useQuery({
+      queryKey: ['shop', user?.shopId],
+      queryFn: async () => {
+        if (!user?.shopId) throw new Error('No shop ID');
+        return await getShopById(user.shopId);
+      },
+      enabled: !!user?.shopId,
+    });
+
   const {
     selectedTemplate,
     searchQuery,
@@ -49,14 +62,35 @@ export default function CatalogBuilderScreen() {
     getSelectedItemsWithCustomizations,
     getTotalValue,
     clearSelections,
-    submitBulkProducts,
+    submitBulkProductsAsync,
     isSubmittingProducts,
     setSearchQuery,
     setSelectedCategory,
-  } = useCatalogViewModel(null);
+  } = useCatalogViewModel(shop || null);
 
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [showPrice, setShowPrice] = useState(false);
+  if (isLoadingShop) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <Text className="text-gray-600">Loading shop data...</Text>
+      </View>
+    );
+  }
+
+  if (!shop) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white p-4">
+        <Text className="text-lg font-semibold text-gray-800 mb-2">
+          Shop Not Registered
+        </Text>
+        <Text className="text-sm text-gray-600 text-center">
+          Please register your shop first
+        </Text>
+      </View>
+    );
+  }
+
 
   const currentTemplateItems = useMemo(() => {
     const template = templates.find((t) => t.id === activeTemplate);
@@ -84,11 +118,17 @@ export default function CatalogBuilderScreen() {
         { text: 'Cancel', onPress: () => {}, style: 'cancel' },
         {
           text: 'Add',
-          onPress: () => {
-            submitBulkProducts(getSelectedItemsWithCustomizations());
-            Alert.alert('Success', `${selected} products added!`);
-            clearSelections();
-            setActiveTemplate(null);
+          onPress: async () => {
+            try {
+              const items = getSelectedItemsWithCustomizations();
+              await submitBulkProductsAsync(items);
+              Alert.alert('Success', `${selected} products added!`);
+              clearSelections();
+              setActiveTemplate(null);
+            } catch (error) {
+              console.error('Catalog submit error:', error);
+              Alert.alert('Error', 'Failed to add products. Please try again.');
+            }
           },
         },
       ]
@@ -124,9 +164,9 @@ export default function CatalogBuilderScreen() {
               )}
             </Text>
           </View>
-          <View>
-            {isActive ? '▶' : ''}
-          </View>
+          {isActive && (
+            <Text className="text-xl text-red-600">▶</Text>
+          )}
         </View>
       </TouchableOpacity>
     );

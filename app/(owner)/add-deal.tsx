@@ -3,6 +3,7 @@
  * Screen for creating daily deals for shop products
  */
 
+import { createDeal } from '@services/dealService';
 import { getProductsByShop } from '@services/productService';
 import { useAuthStore } from '@store/authStore';
 import { useQuery } from '@tanstack/react-query';
@@ -80,14 +81,24 @@ export default function AddDealScreen() {
   };
 
   const handleSubmitDeal = async () => {
-    if (!user?.shopId || !selectedProduct || !form.discount) {
+    if (!user?.shopId || !selectedProduct || !form.discount || !form.dealPrice) {
       Alert.alert('Error', 'Please fill all fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // TODO: Implement deal creation
+      const dealData = {
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        originalPrice: selectedProduct.price,
+        dealPrice: form.dealPrice,
+        expiresAt: form.endDate || new Date(Date.now() + 24 * 60 * 60 * 1000),
+      };
+      
+      await createDeal(user.shopId, dealData as any);
+      
+      Alert.alert('Success', 'Deal created successfully!');
       setForm({});
       setSelectedProduct(null);
     } catch (error) {

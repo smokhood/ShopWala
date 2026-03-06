@@ -4,9 +4,10 @@
  * Supports: Edit details, update prices, manage stock, swipe to delete
  */
 
-import { getProductsByShop, toggleProductStock, updateProductPrice } from '@services/productService';
+import { getProductsByShopForOwner, toggleProductStock, updateProductDetails } from '@services/productService';
 import { useAuthStore } from '@store/authStore';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -25,11 +26,12 @@ interface EditingProduct {
   id: string;
   name: string;
   price: number;
-  stock: number;
+  inStock: boolean;
   isActive: boolean;
 }
 
 export default function ManageCatalogScreen() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null);
   const [editForm, setEditForm] = useState<Partial<EditingProduct>>({});
@@ -39,21 +41,30 @@ export default function ManageCatalogScreen() {
     queryKey: ['shopProducts', user?.shopId],
     queryFn: () => {
       if (!user?.shopId) throw new Error('No shop found');
-      return getProductsByShop(user.shopId);
+      return getProductsByShopForOwner(user.shopId);
     },
     enabled: !!user?.shopId,
   });
 
-  // Update product price mutation
+  // Update editable product fields mutation
   const updateMutation = useMutation({
     mutationFn: async (product: EditingProduct) => {
       if (!user?.shopId) throw new Error('No shop found');
-      return updateProductPrice(user.shopId, product.id, product.price);
+      return updateProductDetails(user.shopId, product.id, {
+        name: product.name,
+        price: product.price,
+        inStock: product.inStock,
+        isActive: product.isActive,
+      });
     },
     onSuccess: () => {
       productsQuery.refetch();
       setEditingProduct(null);
       Alert.alert('Success', 'Product updated successfully');
+    },
+    onError: (error) => {
+      console.error('Update product error:', error);
+      Alert.alert('Error', 'Failed to update product. Please try again.');
     },
   });
 
@@ -63,13 +74,13 @@ export default function ManageCatalogScreen() {
       id: product.id,
       name: product.name,
       price: product.price,
-      stock: product.stock,
+      inStock: product.inStock,
       isActive: product.isActive,
     });
     setEditForm({
       name: product.name,
       price: product.price,
-      stock: product.stock,
+      inStock: product.inStock,
       isActive: product.isActive,
     });
   };
@@ -85,18 +96,18 @@ export default function ManageCatalogScreen() {
     updateMutation.mutate(updated);
   };
 
-  const handleDelete = (productId: string, productName: string) => {
+  const handleDelete = (productId: string, productName: string, currentInStock: boolean) => {
     Alert.alert(
-      'Product Action',
-      `Toggle stock status for "${productName}"?`,
+      'Product Stock',
+      `${currentInStock ? 'Mark out of stock' : 'Mark in stock'} for "${productName}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Toggle Out of Stock',
+          text: 'Confirm',
           style: 'default',
           onPress: async () => {
             if (user?.shopId) {
-              await toggleProductStock(user.shopId, productId, true);
+              await toggleProductStock(user.shopId, productId, !currentInStock);
               productsQuery.refetch();
             }
           },
@@ -105,13 +116,13 @@ export default function ManageCatalogScreen() {
     );
   };
 
-  const renderRightActions = (productId: string, productName: string) => {
+  const renderRightActions = (productId: string, productName: string, currentInStock: boolean) => {
     return (
       <TouchableOpacity
-        onPress={() => handleDelete(productId, productName)}
+        onPress={() => handleDelete(productId, productName, currentInStock)}
         className="bg-red-500 w-20 flex items-center justify-center"
       >
-        <Text className="text-white text-2xl">🗑️</Text>
+        <Text className="text-white text-2xl">📦</Text>
       </TouchableOpacity>
     );
   };
@@ -158,22 +169,32 @@ export default function ManageCatalogScreen() {
             />
           </View>
 
-          {/* Stock */}
+          {/* Stock Status */}
           <View>
             <Text className="text-sm text-gray-700 font-medium mb-2">
-              Stock
+              Stock Status
             </Text>
-            <TextInput
-              value={editForm.stock?.toString() || ''}
-              onChangeText={(value: string) =>
+            <TouchableOpacity
+              onPress={() =>
                 setEditForm({
                   ...editForm,
-                  stock: parseInt(value) || 0,
+                  inStock: !editForm.inStock,
                 })
               }
-              keyboardType="number-pad"
-              placeholder="10"
-            />
+              className={`p-3 rounded-lg border-2 ${
+                editForm.inStock
+                  ? 'bg-green-50 border-green-500'
+                  : 'bg-orange-50 border-orange-400'
+              }`}
+            >
+              <Text
+                className={`font-medium ${
+                  editForm.inStock ? 'text-green-700' : 'text-orange-700'
+                }`}
+              >
+                {editForm.inStock ? 'In Stock' : 'Out of Stock'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Active Status */}
@@ -240,7 +261,10 @@ export default function ManageCatalogScreen() {
           <Text className="text-xl font-bold text-gray-800">
             {products.length} Products
           </Text>
-          <TouchableOpacity className="p-2 bg-red-100 rounded-lg">
+          <TouchableOpacity
+            onPress={() => router.push('/(owner)/catalog-builder')}
+            className="p-2 bg-red-100 rounded-lg"
+          >
             <Text className="text-2xl">➕</Text>
           </TouchableOpacity>
         </View>
@@ -253,7 +277,7 @@ export default function ManageCatalogScreen() {
         renderItem={({ item: product }) => (
           <Swipeable
             renderRightActions={() =>
-              renderRightActions(product.id, product.name)
+              renderRightActions(product.id, product.name, product.inStock)
             }
           >
             <TouchableOpacity
@@ -292,9 +316,7 @@ export default function ManageCatalogScreen() {
           <Text className="text-gray-600">No products yet</Text>
           <CustomButton
             title="Add Products from Template"
-            onPress={() => {
-              // Navigate to catalog-builder
-            }}
+            onPress={() => router.push('/(owner)/catalog-builder')}
           />
         </View>
       )}

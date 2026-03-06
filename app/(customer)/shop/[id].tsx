@@ -29,6 +29,7 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue
 } from 'react-native-reanimated';
+import { useFavouritesViewModel } from '../../../src/viewModels/useFavouritesViewModel';
 import { useShopViewModel } from '../../../src/viewModels/useShopViewModel';
 
 const HEADER_HEIGHT = 200;
@@ -54,12 +55,16 @@ export default function ShopDetailScreen() {
     searchQuery,
   } = useShopViewModel({ shopId });
 
+  const { toggleFavourite, isFavourite } = useFavouritesViewModel();
+
   const { items: cartItems, shopId: cartShopId } = useCartStore();
   const totalItems = useTotalItems();
   const totalPrice = useTotalPrice();
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isFavouriting, setIsFavouriting] = useState(false);
+  const [isRating, setIsRating] = useState(false);
 
   const scrollY = useSharedValue(0);
 
@@ -132,14 +137,14 @@ export default function ShopDetailScreen() {
     }
   };
 
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (product: Product, overridePrice?: number) => {
     const { addItem, setShop } = useCartStore.getState();
 
     const cartItem = {
       productId: product.id,
       productName: product.name,
       productNameUrdu: product.nameUrdu,
-      price: product.price,
+      price: overridePrice ?? product.price,
       quantity: 1,
       unit: product.unit,
       shopId: product.shopId,
@@ -172,14 +177,109 @@ export default function ShopDetailScreen() {
   };
 
   const handleRateShop = () => {
+    if (isRating) return;
+    
     Alert.alert('Shop کو Rate کریں', 'کتنے ستارے دیں گے؟', [
-      { text: '⭐ 1', onPress: () => rateShop(1) },
-      { text: '⭐⭐ 2', onPress: () => rateShop(2) },
-      { text: '⭐⭐⭐ 3', onPress: () => rateShop(3) },
-      { text: '⭐⭐⭐⭐ 4', onPress: () => rateShop(4) },
-      { text: '⭐⭐⭐⭐⭐ 5', onPress: () => rateShop(5) },
+      { 
+        text: '⭐ 1', 
+        onPress: async () => {
+          setIsRating(true);
+          try {
+            await rateShop(1);
+            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+          } catch (error) {
+            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+          } finally {
+            setIsRating(false);
+          }
+        }
+      },
+      { 
+        text: '⭐⭐ 2', 
+        onPress: async () => {
+          setIsRating(true);
+          try {
+            await rateShop(2);
+            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+          } catch (error) {
+            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+          } finally {
+            setIsRating(false);
+          }
+        }
+      },
+      { 
+        text: '⭐⭐⭐ 3', 
+        onPress: async () => {
+          setIsRating(true);
+          try {
+            await rateShop(3);
+            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+          } catch (error) {
+            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+          } finally {
+            setIsRating(false);
+          }
+        }
+      },
+      { 
+        text: '⭐⭐⭐⭐ 4', 
+        onPress: async () => {
+          setIsRating(true);
+          try {
+            await rateShop(4);
+            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+          } catch (error) {
+            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+          } finally {
+            setIsRating(false);
+          }
+        }
+      },
+      { 
+        text: '⭐⭐⭐⭐⭐ 5', 
+        onPress: async () => {
+          setIsRating(true);
+          try {
+            await rateShop(5);
+            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+          } catch (error) {
+            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+          } finally {
+            setIsRating(false);
+          }
+        }
+      },
       { text: 'Cancel', style: 'cancel' },
     ]);
+  };
+
+  const handleToggleFavourite = async () => {
+    if (isFavouriting) return;
+    
+    setIsFavouriting(true);
+    try {
+      await toggleFavourite(shopId);
+    } catch (error) {
+      Alert.alert('خرابی', 'پسندیدہ میں شامل/ہٹانے میں خرابی');
+    } finally {
+      setIsFavouriting(false);
+    }
+  };
+
+  const handleDealPress = (deal: any) => {
+    // Find the product in the catalog
+    const product = products.find((p) => p.name === deal.productName);
+    if (product) {
+      // Add to cart with deal price instead of regular price
+      handleAddToCart(product, deal.dealPrice);
+      Alert.alert(
+        '🎉 Deal شامل ہو گیا!',
+        `${deal.productName}\nRs. ${deal.originalPrice} → Rs. ${deal.dealPrice}\n\nآپ نے Rs. ${deal.savingsAmount} بچائے!`
+      );
+    } else {
+      Alert.alert('Deal', `${deal.productName}\nRs. ${deal.dealPrice}`);
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -250,10 +350,15 @@ export default function ShopDetailScreen() {
         </Animated.View>
 
         <Pressable
-          onPress={handleRateShop}
+          onPress={handleToggleFavourite}
+          disabled={isFavouriting}
           className="ml-2 w-10 h-10 rounded-full bg-white items-center justify-center"
         >
-          <Ionicons name="heart-outline" size={24} color="#ef4444" />
+          <Ionicons
+            name={isFavourite(shopId) ? 'heart' : 'heart-outline'}
+            size={24}
+            color="#ef4444"
+          />
         </Pressable>
       </Animated.View>
 
@@ -383,12 +488,12 @@ export default function ShopDetailScreen() {
               </Text>
             </View>
             <ScrollView
-              horizontal
+              horizontal={true}
               showsHorizontalScrollIndicator={false}
               className="px-4"
             >
               {deals.map((deal) => (
-                <DealCard key={deal.id} deal={deal} />
+                <DealCard key={deal.id} deal={deal} onPress={() => handleDealPress(deal)} />
               ))}
             </ScrollView>
           </View>
@@ -410,7 +515,7 @@ export default function ShopDetailScreen() {
 
           {/* Category Tabs */}
           <ScrollView
-            horizontal
+            horizontal={true}
             showsHorizontalScrollIndicator={false}
             className="px-4 mb-4"
           >

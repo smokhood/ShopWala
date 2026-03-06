@@ -6,12 +6,15 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Shop } from '@models/Shop';
+import { db } from '@services/firebase';
 import { createShop } from '@services/shopService';
 import { useAuthStore } from '@store/authStore';
 import { useLocationStore } from '@store/locationStore';
+import { useLocationViewModel } from '@viewModels/useLocationViewModel';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useCallback, useEffect, useState } from 'react';
+import { Controller, FieldErrors, useForm } from 'react-hook-form';
 import {
     ActivityIndicator,
     Alert,
@@ -45,8 +48,9 @@ type ShopFormData = z.infer<typeof shopRegistrationSchema>;
 
 export default function RegisterShopScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const { location, area, city } = useLocationStore();
+  const { refreshLocation, isLocating } = useLocationViewModel();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,6 +60,7 @@ export default function RegisterShopScreen() {
     handleSubmit,
     watch,
     setValue,
+    trigger,
     formState: { errors },
   } = useForm<ShopFormData>({
     resolver: zodResolver(shopRegistrationSchema),
@@ -71,13 +76,66 @@ export default function RegisterShopScreen() {
   });
 
   const category = watch('category');
-  const address = watch('address');
 
-  const handleNextStep = useCallback(() => {
+  useEffect(() => {
+    if (city) {
+      setValue('city', city, { shouldValidate: true });
+    }
+    if (area) {
+      const currentAddress = watch('address');
+      if (!currentAddress || currentAddress.trim().length === 0) {
+        setValue('address', area, { shouldValidate: true });
+      }
+    }
+  }, [area, city, setValue, watch]);
+
+  const normalizePhone = (value: string): string => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.startsWith('92')) {
+      return `+${digits.slice(0, 12)}`;
+    }
+    if (digits.startsWith('0')) {
+      return `+92${digits.slice(1, 11)}`;
+    }
+    return `+92${digits.slice(0, 10)}`;
+  };
+
+  const handlePickLocation = useCallback(async () => {
+    try {
+      await refreshLocation();
+    } catch {
+      Alert.alert('Error', 'Unable to fetch location. Please allow location permission.');
+    }
+  }, [refreshLocation]);
+
+  const handleNextStep = useCallback(async () => {
+    let isStepValid = true;
+
+    if (step === 1) {
+      isStepValid = await trigger(['name', 'nameUrdu', 'phone']);
+    }
+
+    if (step === 2) {
+      isStepValid = await trigger(['address', 'city']);
+      if (!location) {
+        Alert.alert('Location Required', 'Please pick your shop location first.');
+        isStepValid = false;
+      }
+    }
+
+    if (step === 3) {
+      isStepValid = await trigger(['description', 'category']);
+    }
+
+    if (!isStepValid) {
+      Alert.alert('Incomplete', 'Please fill all required fields before continuing.');
+      return;
+    }
+
     if (step < 4) {
       setStep(step + 1);
     }
-  }, [step]);
+  }, [step, trigger, location]);
 
   const handlePreviousStep = useCallback(() => {
     if (step > 1) {
@@ -103,8 +161,8 @@ export default function RegisterShopScreen() {
         ownerName: user.name,
         ownerId: user.id,
         category: data.category as any,
-        whatsapp: data.phone,
-        phone: data.phone,
+        whatsapp: normalizePhone(data.phone),
+        phone: normalizePhone(data.phone),
         location: {
           latitude: location.lat,
           longitude: location.lng,
@@ -126,13 +184,26 @@ export default function RegisterShopScreen() {
           easyPaisaNumber: null,
           bankAccount: null,
         },
-        isVerified: false,
+        // Auto-verify at creation: no manual approval required.
+        isVerified: true,
       };
 
       const shopId = await createShop(shopData);
 
-      // Update user's shopId in auth store
-      // Note: This should be handled by your auth service
+      // Update user's shopId in Firestore
+      if (user?.id) {
+        const userRef = doc(db, 'users', user.id);
+        await updateDoc(userRef, {
+          shopId,
+          updatedAt: new Date(),
+        });
+        
+        // Update local auth store
+        setUser({
+          ...user,
+          shopId,
+        });
+      }
       
       Alert.alert(
         'Success',
@@ -154,6 +225,29 @@ export default function RegisterShopScreen() {
     }
   };
 
+  const onInvalidSubmit = (formErrors: FieldErrors<ShopFormData>) => {
+    // Jump to the first step that has an error so user can fix it quickly.
+    if (formErrors.name || formErrors.nameUrdu || formErrors.phone) {
+      setStep(1);
+      Alert.alert('Step 1 Incomplete', 'Please complete shop name and phone details.');
+      return;
+    }
+
+    if (formErrors.address || formErrors.city) {
+      setStep(2);
+      Alert.alert('Step 2 Incomplete', 'Please complete address, city, and pick location.');
+      return;
+    }
+
+    if (formErrors.description || formErrors.category) {
+      setStep(3);
+      Alert.alert('Step 3 Incomplete', 'Please select category and add description.');
+      return;
+    }
+
+    Alert.alert('Invalid Form', 'Please review all required fields and try again.');
+  };
+
   const renderStepContent = () => {
     switch (step) {
       case 1:
@@ -167,7 +261,9 @@ export default function RegisterShopScreen() {
               name="name"
               render={({ field }) => (
                 <TextInput
-                  {...field}
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
                   placeholder="Shop Name (English)"
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
@@ -183,7 +279,9 @@ export default function RegisterShopScreen() {
               name="nameUrdu"
               render={({ field }) => (
                 <TextInput
-                  {...field}
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
                   placeholder="دکان کا نام (اردو)"
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
@@ -201,7 +299,9 @@ export default function RegisterShopScreen() {
               name="phone"
               render={({ field }) => (
                 <TextInput
-                  {...field}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChangeText={(text) => field.onChange(normalizePhone(text))}
                   placeholder="+92 300 1234567"
                   placeholderTextColor="#9ca3af"
                   keyboardType="phone-pad"
@@ -221,18 +321,28 @@ export default function RegisterShopScreen() {
             <Text className="text-lg font-semibold text-gray-800 mb-2">
               Location
             </Text>
-            <LocationPicker />
+            <LocationPicker
+              onPress={handlePickLocation}
+              location={location ? {
+                latitude: location.lat,
+                longitude: location.lng,
+                address: area || 'Current location selected',
+              } : undefined}
+              placeholder={isLocating ? 'Fetching location...' : 'Tap to pick shop location'}
+            />
 
             <Controller
               control={control}
               name="address"
               render={({ field }) => (
                 <TextInput
-                  {...field}
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
                   placeholder="Store Address"
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
-                  multiline
+                  multiline={true}
                 />
               )}
             />
@@ -245,7 +355,9 @@ export default function RegisterShopScreen() {
               name="city"
               render={({ field }) => (
                 <TextInput
-                  {...field}
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
                   placeholder="City"
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
@@ -292,11 +404,13 @@ export default function RegisterShopScreen() {
               name="description"
               render={({ field }) => (
                 <TextInput
-                  {...field}
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  onBlur={field.onBlur}
                   placeholder="Shop Description"
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
-                  multiline
+                  multiline={true}
                   numberOfLines={4}
                 />
               )}
@@ -390,7 +504,7 @@ export default function RegisterShopScreen() {
           <View className="flex-row items-center">
             <CustomButton
               title={isLoading ? 'Loading...' : 'Submit'}
-              onPress={handleSubmit(onSubmit)}
+              onPress={handleSubmit(onSubmit, onInvalidSubmit)}
               disabled={isLoading}
             />
             {isLoading && <ActivityIndicator color="#2563eb" style={{ marginLeft: 10 }} />}

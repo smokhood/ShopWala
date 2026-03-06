@@ -138,7 +138,7 @@ export function useShopViewModel({
   // Flag product out of stock mutation
   const flagProductMutation = useMutation({
     mutationFn: (productId: string) =>
-      productService.flagProductOutOfStock(productId, shopId, 'customer'),
+      productService.flagProductOutOfStock(shopId, productId, 'customer'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products', shopId] });
     },

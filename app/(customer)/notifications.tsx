@@ -9,8 +9,8 @@ import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
-    FlatList,
     RefreshControl,
+    SectionList,
     Text,
     TouchableOpacity,
     View
@@ -210,7 +210,7 @@ export default function NotificationsScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
+        <SectionList
           sections={sections.map((s) => ({
             title: s.title,
             data: s.data,

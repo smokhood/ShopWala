@@ -100,7 +100,7 @@ export default function OwnerSettingsScreen() {
                 setEditForm({ ...editForm, address: value })
               }
               placeholder="Shop Address"
-              multiline
+              multiline={true}
             />
           </View>
 
@@ -114,7 +114,7 @@ export default function OwnerSettingsScreen() {
                 setEditForm({ ...editForm, description: value })
               }
               placeholder="Shop Description"
-              multiline
+              multiline={true}
               numberOfLines={4}
             />
           </View>

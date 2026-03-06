@@ -4,6 +4,7 @@
  * Shows user's favorite shops with swipe-to-remove functionality
  */
 
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -52,6 +53,27 @@ export default function FavouritesScreen() {
     [removeFavourite]
   );
 
+  const handleWhatsAppPress = useCallback(async (shop: any) => {
+    try {
+      const phone = String(shop?.whatsapp || '').replace(/[+\s]/g, '');
+      if (!phone) {
+        Alert.alert('خرابی', 'WhatsApp نمبر دستیاب نہیں ہے');
+        return;
+      }
+
+      const message = encodeURIComponent(
+        `السلام علیکم! میں ${shop.name} سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nDukandaR app سے`
+      );
+      const nativeUrl = `whatsapp://send?phone=${phone}&text=${message}`;
+      const webUrl = `https://wa.me/${phone}?text=${message}`;
+
+      const canOpenNative = await Linking.canOpenURL(nativeUrl);
+      await Linking.openURL(canOpenNative ? nativeUrl : webUrl);
+    } catch (error) {
+      Alert.alert('خرابی', 'WhatsApp کھولنے میں ناکام');
+    }
+  }, []);
+
   const renderRightActions = (shopId: string, shopName: string) => (
     <TouchableOpacity
       className="bg-red-500 w-20 flex items-center justify-center"
@@ -69,10 +91,7 @@ export default function FavouritesScreen() {
       <ShopCard
         shop={shop}
         onPress={() => router.push(`/(customer)/shop/${shop.id}`)}
-        onWhatsAppPress={() => {
-          // WhatsApp button handler
-          console.log('WhatsApp button for shop:', shop.id);
-        }}
+        onWhatsAppPress={() => handleWhatsAppPress(shop)}
       />
     </Swipeable>
   );
