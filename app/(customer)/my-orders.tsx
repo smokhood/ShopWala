@@ -10,16 +10,15 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
-    Pressable,
     RefreshControl,
     Text,
-    View,
+    View
 } from 'react-native';
+import { CustomButton } from '../../src/components/CustomButton';
 import { EmptyState } from '../../src/components/EmptyState';
 import { useLanguage } from '../../src/hooks/useLanguage';
 import * as orderService from '../../src/services/orderService';
 import { useAuthStore } from '../../src/store/authStore';
-import { CustomButton } from '../../src/components/CustomButton';
 
 export default function MyOrdersScreen() {
   const { t, language } = useLanguage();
@@ -69,7 +68,7 @@ export default function MyOrdersScreen() {
     });
   }, [language, t]);
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeColor = (status?: string) => {
     switch (status) {
       case 'pending':
         return { bg: 'bg-yellow-100', text: 'text-yellow-700' };
@@ -82,7 +81,7 @@ export default function MyOrdersScreen() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status?: string) => {
     switch (status) {
       case 'pending':
         return 'Pending';
@@ -91,7 +90,7 @@ export default function MyOrdersScreen() {
       case 'completed':
         return 'Completed';
       default:
-        return status;
+        return 'Pending';
     }
   };
 

@@ -67,6 +67,15 @@ export default function OwnerLayout() {
         }}
       />
       <Tabs.Screen
+        name="orders"
+        options={{
+          title: t('owner.orders_title') || 'Orders',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="receipt" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="manage-catalog"
         options={{
           title: t('owner.catalog') || 'Products',

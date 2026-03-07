@@ -125,6 +125,14 @@ service cloud.firestore {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
       }
 
+      function customerCanMarkCompleted() {
+        let changed = request.resource.data.diff(resource.data).changedKeys();
+        return resource.data.customerId == request.auth.uid
+          && resource.data.status == 'dispatched'
+          && request.resource.data.status == 'completed'
+          && changed.hasOnly(['status', 'completedAt', 'updatedAt']);
+      }
+
       // Customers can read their own orders
       // Shop owners can read orders for their own shop
       allow read: if isAuthenticated() && (
@@ -139,7 +147,7 @@ service cloud.firestore {
       // Customers can update their own orders (mark as completed)
       allow update: if isAuthenticated() && (
         resource.data.shopId == currentUserShopId() ||
-        resource.data.customerId == request.auth.uid
+        customerCanMarkCompleted()
       );
 
       // No deletes

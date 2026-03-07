@@ -1,9 +1,25 @@
 // Order Service for ShopWala
-import type { Order, OrderStatus } from '@models/Order';
+import type { Order } from '@models/Order';
 import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 
 const ORDERS_COLLECTION = 'orders';
+
+function normalizeOrderDates(data: any) {
+  const toDateOrNull = (value: any): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value?.toDate === 'function') return value.toDate();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  return {
+    createdAt: toDateOrNull(data.createdAt) || new Date(),
+    dispatchedAt: toDateOrNull(data.dispatchedAt),
+    completedAt: toDateOrNull(data.completedAt),
+  };
+}
 
 /**
  * Create a new order in Firestore
@@ -12,14 +28,14 @@ const ORDERS_COLLECTION = 'orders';
  * @returns Order ID
  */
 export async function createOrder(
-  order: Omit<Order, 'id' | 'status' | 'customerId' | 'createdAt' | 'updatedAt' | 'dispatchedAt' | 'completedAt'>,
+  order: Omit<Order, 'id' | 'status' | 'customerId'>,
   customerId: string
 ): Promise<string> {
   try {
     const orderData = {
       ...order,
       customerId,
-      status: 'pending',
+      status: 'pending' as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -45,11 +61,16 @@ export async function getCustomerOrders(customerId: string): Promise<Order[]> {
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date(),
-    })) as Order[];
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      const dates = normalizeOrderDates(data);
+
+      return {
+        id: docSnap.id,
+        ...data,
+        ...dates,
+      } as Order;
+    });
   } catch (error) {
     console.error('Get customer orders error:', error);
     throw error;
@@ -69,11 +90,16 @@ export async function getShopOrders(shopId: string): Promise<Order[]> {
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date(),
-    })) as Order[];
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      const dates = normalizeOrderDates(data);
+
+      return {
+        id: docSnap.id,
+        ...data,
+        ...dates,
+      } as Order;
+    });
   } catch (error) {
     console.error('Get shop orders error:', error);
     throw error;

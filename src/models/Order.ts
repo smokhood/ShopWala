@@ -35,7 +35,7 @@ export interface CartItem {
 export interface Order {
   /** Unique order ID */
   id: string;
-  /** Order status */
+  /** Order status - optional for temporary orders before Firestore persistence */
   status?: OrderStatus;
   /** Items in the order */
   items: CartItem[];
@@ -45,7 +45,7 @@ export interface Order {
   shopName: string;
   /** Shop WhatsApp number */
   shopWhatsapp: string;
-  /** Customer ID */
+  /** Customer ID - optional for temporary orders before Firestore persistence */
   customerId?: string;
   /** Customer name */
   customerName?: string;
