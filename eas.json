@@ -7,7 +7,16 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCGvcc8fDqXFTKi7I1nYRxRVOY8Nl-nI_Q",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "dukandarapp-56878.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "dukandarapp-56878",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "dukandarapp-56878.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "222345434001",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:222345434001:web:2a9acdad6267fa362b0030",
+        "EXPO_PUBLIC_FIREBASE_PHONE_AUTH_TESTING": "true",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "your-google-maps-key",
+        "EXPO_PUBLIC_SENTRY_DSN": "your-sentry-dsn-here"
       }
     },
     "preview": {
@@ -16,13 +25,31 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_ENV": "staging"
+        "APP_ENV": "staging",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCGvcc8fDqXFTKi7I1nYRxRVOY8Nl-nI_Q",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "dukandarapp-56878.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "dukandarapp-56878",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "dukandarapp-56878.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "222345434001",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:222345434001:web:2a9acdad6267fa362b0030",
+        "EXPO_PUBLIC_FIREBASE_PHONE_AUTH_TESTING": "true",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "your-google-maps-key",
+        "EXPO_PUBLIC_SENTRY_DSN": "your-sentry-dsn-here"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCGvcc8fDqXFTKi7I1nYRxRVOY8Nl-nI_Q",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "dukandarapp-56878.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "dukandarapp-56878",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "dukandarapp-56878.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "222345434001",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:222345434001:web:2a9acdad6267fa362b0030",
+        "EXPO_PUBLIC_FIREBASE_PHONE_AUTH_TESTING": "false",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "your-google-maps-key",
+        "EXPO_PUBLIC_SENTRY_DSN": "your-sentry-dsn-here"
       }
     }
   },
