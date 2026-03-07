@@ -62,7 +62,7 @@ export default function SplashScreen() {
       {/* Logo */}
       <Animated.View style={[logoStyle]} className="items-center">
         <Ionicons name="bag-handle" size={64} color="white" />
-        <Text className="text-white text-4xl font-bold mt-4">DukandaR</Text>
+        <Text className="text-white text-4xl font-bold mt-4">ShopWala</Text>
       </Animated.View>
 
       {/* Tagline */}

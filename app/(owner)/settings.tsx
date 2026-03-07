@@ -5,10 +5,11 @@
 
 import { updateShop } from '@services/shopService';
 import { useAuthStore } from '@store/authStore';
-import { useRouter } from 'expo-router';
+import { useAuthViewModel } from '@viewModels/useAuthViewModel';
 import { useState } from 'react';
 import {
     Alert,
+    Linking,
     ScrollView,
     Switch,
     Text,
@@ -19,8 +20,8 @@ import { CustomButton } from '../../src/components/CustomButton';
 import { TextInput } from '../../src/components/TextInput';
 
 export default function OwnerSettingsScreen() {
-  const router = useRouter();
-  const { user, clearUser } = useAuthStore();
+  const { user } = useAuthStore();
+  const { logout, deleteAccount } = useAuthViewModel();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -61,11 +62,48 @@ export default function OwnerSettingsScreen() {
         text: 'Log Out',
         style: 'destructive',
         onPress: async () => {
-          clearUser();
-          router.replace('/(auth)/otp');
+          try {
+            await logout();
+          } catch (error) {
+            Alert.alert('Error', 'Logout failed. Please try again.');
+          }
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account, shop, products, deals, and order history. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Final Confirmation',
+              'Are you absolutely sure you want to permanently delete everything?',
+              [
+                { text: 'No', style: 'cancel' },
+                {
+                  text: 'Yes, Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteAccount();
+                    } catch (error: any) {
+                      Alert.alert('Delete Failed', error?.message || 'Could not delete account right now.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   if (isEditing) {
@@ -260,14 +298,47 @@ export default function OwnerSettingsScreen() {
           <Text className="text-lg">▶️</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity className="flex-row justify-between items-center py-3 border-b border-gray-100">
+        <TouchableOpacity
+          className="flex-row justify-between items-center py-3 border-b border-gray-100"
+          onPress={() => Linking.openURL('https://dukandar.com/support')}
+        >
           <Text className="text-gray-700">Contact Support</Text>
+          <Text className="text-lg">▶️</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="flex-row justify-between items-center py-3 border-b border-gray-100"
+          onPress={() => Linking.openURL('https://dukandar.com/privacy')}
+        >
+          <Text className="text-gray-700">Privacy Policy</Text>
+          <Text className="text-lg">▶️</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="flex-row justify-between items-center py-3 border-b border-gray-100"
+          onPress={() => Linking.openURL('https://dukandar.com/terms')}
+        >
+          <Text className="text-gray-700">Terms of Service</Text>
           <Text className="text-lg">▶️</Text>
         </TouchableOpacity>
 
         <TouchableOpacity className="flex-row justify-between items-center py-3">
           <Text className="text-gray-700">App Version</Text>
           <Text className="text-gray-600">1.0.0</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Danger Zone */}
+      <View className="bg-white p-4 mb-4">
+        <Text className="text-lg font-bold text-red-700 mb-2">Danger Zone</Text>
+        <Text className="text-sm text-gray-600 mb-4">
+          Permanently remove your account and all connected owner data.
+        </Text>
+        <TouchableOpacity
+          onPress={handleDeleteAccount}
+          className="py-3 px-4 border border-red-300 bg-red-50 rounded-lg"
+        >
+          <Text className="text-center font-semibold text-red-700">Delete Account</Text>
         </TouchableOpacity>
       </View>
 
@@ -279,7 +350,7 @@ export default function OwnerSettingsScreen() {
         />
         <View className="mt-4 p-4 bg-gray-100 rounded-lg items-center">
           <Text className="text-xs text-gray-600 text-center">
-            © 2024 DukandaR. All rights reserved.
+            © 2024 ShopWala. All rights reserved.
           </Text>
         </View>
       </View>

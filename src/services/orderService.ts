@@ -1,6 +1,6 @@
-// Order Service for DukandaR
-import type { Order } from '@models/Order';
-import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
+// Order Service for ShopWala
+import type { Order, OrderStatus } from '@models/Order';
+import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 
 const ORDERS_COLLECTION = 'orders';
@@ -11,7 +11,10 @@ const ORDERS_COLLECTION = 'orders';
  * @param customerId Customer user ID
  * @returns Order ID
  */
-export async function createOrder(order: Omit<Order, 'id'>, customerId: string): Promise<string> {
+export async function createOrder(
+  order: Omit<Order, 'id' | 'status' | 'customerId' | 'createdAt' | 'updatedAt' | 'dispatchedAt' | 'completedAt'>,
+  customerId: string
+): Promise<string> {
   try {
     const orderData = {
       ...order,
@@ -73,6 +76,44 @@ export async function getShopOrders(shopId: string): Promise<Order[]> {
     })) as Order[];
   } catch (error) {
     console.error('Get shop orders error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Mark order as dispatched (owner action)
+ * @param orderId Order ID
+ * @returns void
+ */
+export async function markOrderDispatched(orderId: string): Promise<void> {
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    await updateDoc(orderRef, {
+      status: 'dispatched',
+      dispatchedAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Mark order dispatched error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Mark order as completed/received (customer action)
+ * @param orderId Order ID
+ * @returns void
+ */
+export async function markOrderCompleted(orderId: string): Promise<void> {
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    await updateDoc(orderRef, {
+      status: 'completed',
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Mark order completed error:', error);
     throw error;
   }
 }

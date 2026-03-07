@@ -80,6 +80,7 @@ export function EmptyState({
 
   return (
     <View className="flex-1 items-center justify-center px-6 py-12">
+      <View className="bg-white rounded-3xl border border-gray-100 px-6 py-7 items-center w-full max-w-sm">
       <View className="w-20 h-20 rounded-full bg-gray-100 items-center justify-center mb-4">
         <Ionicons name={config.icon as any} size={40} color="#9ca3af" />
       </View>
@@ -88,18 +89,19 @@ export function EmptyState({
         {title || config.title}
       </Text>
 
-      <Text className="text-sm text-gray-600 text-center max-w-xs mb-6">
+      <Text className="text-sm text-gray-600 text-center max-w-xs mb-6 leading-5">
         {subtitle || config.subtitle}
       </Text>
 
       {actionLabel && onAction && (
         <Pressable
           onPress={onAction}
-          className="border-2 border-primary rounded-xl px-6 py-3"
+          className="bg-primary rounded-xl px-6 py-3"
         >
-          <Text className="text-primary font-semibold">{actionLabel}</Text>
+          <Text className="text-white font-semibold">{actionLabel}</Text>
         </Pressable>
       )}
+      </View>
     </View>
   );
 }

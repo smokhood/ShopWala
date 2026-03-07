@@ -12,6 +12,8 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     Text,
     TouchableOpacity,
@@ -118,9 +120,12 @@ export default function AddDealScreen() {
   }
 
   const products = productsQuery.data || [];
-
   return (
-    <ScrollView className="flex-1 bg-white p-4">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <ScrollView className="flex-1 bg-white p-4" keyboardShouldPersistTaps="handled">
       {/* Select Product */}
       <Text className="text-xl font-bold text-gray-800 mb-4">
         Select Product
@@ -243,6 +248,7 @@ export default function AddDealScreen() {
           </Text>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

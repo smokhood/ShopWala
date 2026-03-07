@@ -49,14 +49,14 @@ function ProductItemComponent({
     <Pressable
       onLongPress={handleLongPress}
       delayLongPress={350}
-      className="bg-white rounded-xl shadow-sm mb-2 px-4 py-3"
+      className="bg-white rounded-2xl border border-gray-100 mb-2 px-4 py-3.5"
     >
       <View className="flex-row justify-between">
         <View className="flex-1 pr-3">
           <Text className="text-[15px] font-bold text-gray-900" numberOfLines={1}>
             {product.nameUrdu || product.name}
           </Text>
-          <Pressable onPress={handleShopPress}>
+          <Pressable onPress={handleShopPress} hitSlop={6}>
             <Text className="text-[13px] text-primary mt-1" numberOfLines={1}>
               {product.shop.name}
             </Text>
@@ -66,7 +66,7 @@ function ProductItemComponent({
           </Text>
         </View>
 
-        <View className="items-end">
+        <View className="items-end justify-between">
           <Text className="text-lg font-bold text-primary">Rs. {product.price}</Text>
           {product.isCheapestNearby && (
             <View className="bg-amber-100 rounded-full px-2 py-0.5 mt-1">
@@ -81,18 +81,18 @@ function ProductItemComponent({
         </View>
       </View>
 
-      <View className="flex-row items-center justify-between mt-3">
+      <View className="flex-row items-center justify-between mt-3 pt-2 border-t border-gray-100">
         <StockBadge status={product.stockStatus} size="sm" />
 
         {!isInCart ? (
           <Pressable
             onPress={handleAddPress}
-            className="w-8 h-8 rounded-full bg-primary items-center justify-center"
+            className="w-9 h-9 rounded-full bg-primary items-center justify-center"
           >
             <Ionicons name="add" size={18} color="white" />
           </Pressable>
         ) : (
-          <View className="w-8 h-8 rounded-full bg-green-600 items-center justify-center">
+          <View className="w-9 h-9 rounded-full bg-green-600 items-center justify-center">
             <Ionicons name="checkmark" size={18} color="white" />
           </View>
         )}

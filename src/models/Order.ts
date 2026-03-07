@@ -1,4 +1,9 @@
-// Order Data Models for DukandaR
+// Order Data Models for ShopWala
+
+/**
+ * Order status lifecycle
+ */
+export type OrderStatus = 'pending' | 'dispatched' | 'completed';
 
 /**
  * Single item in shopping cart
@@ -30,6 +35,8 @@ export interface CartItem {
 export interface Order {
   /** Unique order ID */
   id: string;
+  /** Order status */
+  status?: OrderStatus;
   /** Items in the order */
   items: CartItem[];
   /** Shop ID */
@@ -38,12 +45,20 @@ export interface Order {
   shopName: string;
   /** Shop WhatsApp number */
   shopWhatsapp: string;
+  /** Customer ID */
+  customerId?: string;
+  /** Customer name */
+  customerName?: string;
   /** Order subtotal in PKR */
   subtotal: number;
   /** Customer note/special instructions */
   note: string | null;
   /** Order creation timestamp */
   createdAt: Date;
+  /** When owner dispatched the order */
+  dispatchedAt?: Date | null;
+  /** When customer marked as received */
+  completedAt?: Date | null;
 }
 
 /**

@@ -106,7 +106,7 @@ export function useOrderViewModel(): UseOrderViewModelReturn {
    */
   const buildWhatsAppMessage = (): string => {
     let message = 'Assalam o Alaikum! 🛒\n\n';
-    message += 'Mera Order (DukandaR se):\n';
+    message += 'Mera Order (ShopWala se):\n';
     message += '─────────────────────\n';
     
     items.forEach((item) => {
@@ -121,7 +121,7 @@ export function useOrderViewModel(): UseOrderViewModelReturn {
       message += `\nNote: ${note}\n`;
     }
     
-    message += '\n📱 DukandaR App se bheja gaya';
+    message += '\n📱 ShopWala App se bheja gaya';
     
     return message;
   };

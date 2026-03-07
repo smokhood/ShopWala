@@ -2,6 +2,7 @@
  * SearchBar Component - Professional search input
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Pressable, TextInput } from 'react-native';
 import Animated, {
     useAnimatedStyle,
@@ -31,6 +32,7 @@ export function SearchBar({
 }: SearchBarProps) {
   const { t } = useLanguage();
   const scale = useSharedValue(1);
+  const [isFocused, setIsFocused] = useState(false);
   const resolvedPlaceholder = placeholder ?? t('customer.what_are_you_looking_for');
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -38,6 +40,7 @@ export function SearchBar({
   }));
 
   const handleFocus = () => {
+    setIsFocused(true);
     scale.value = withSpring(1.02, {
       damping: 15,
       stiffness: 150,
@@ -45,6 +48,7 @@ export function SearchBar({
   };
 
   const handleBlur = () => {
+    setIsFocused(false);
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 150,
@@ -54,12 +58,14 @@ export function SearchBar({
   return (
     <Animated.View
       style={[animatedStyle]}
-      className="bg-white rounded-2xl shadow-sm px-4 py-3 flex-row items-center"
+      className={`rounded-2xl px-4 py-3 flex-row items-center border ${
+        isFocused ? 'bg-white border-green-500' : 'bg-white border-gray-200'
+      }`}
     >
       <Ionicons name="search" size={20} color="#16a34a" />
       
       <TextInput
-        className="flex-1 mx-3 text-base"
+        className="flex-1 mx-3 text-[15px] text-gray-900"
         placeholder={resolvedPlaceholder}
         placeholderTextColor="#9ca3af"
         value={value}
@@ -73,7 +79,7 @@ export function SearchBar({
       />
 
       {value.length > 0 && (
-        <Pressable onPress={onClear} hitSlop={8}>
+        <Pressable onPress={onClear} hitSlop={8} className="p-0.5">
           <Ionicons name="close-circle" size={20} color="#9ca3af" />
         </Pressable>
       )}

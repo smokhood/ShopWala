@@ -4,6 +4,7 @@ import { Shop } from '@models/Shop';
 import { formatPrice } from '@utils/formatters';
 import * as Linking from 'expo-linking';
 import { Share } from 'react-native';
+import { buildShopLink } from '../utils/deepLinks';
 
 /**
  * Build WhatsApp message from order
@@ -12,7 +13,7 @@ import { Share } from 'react-native';
  */
 export function buildOrderMessage(order: Order): string {
   let message = 'Assalam o Alaikum! 🛒\n\n';
-  message += 'Mera Order (DukandaR se):\n';
+  message += 'Mera Order (ShopWala se):\n';
   message += '─────────────────────\n';
 
   order.items.forEach((item) => {
@@ -27,7 +28,7 @@ export function buildOrderMessage(order: Order): string {
     message += `\nNote: ${order.note}\n`;
   }
 
-  message += '\n📱 DukandaR App se bheja gaya';
+  message += '\n📱 ShopWala App se bheja gaya';
 
   return message;
 }
@@ -80,8 +81,8 @@ export async function isWhatsAppInstalled(): Promise<boolean> {
  */
 export async function shareShopLink(shop: Shop): Promise<void> {
   try {
-    const deepLink = `dukandar://shop/${shop.id}`;
-    const message = `Dekho ${shop.name} DukandaR pe!\n\nYahan se unka catalog dekho aur order karo:\n${deepLink}`;
+    const deepLink = buildShopLink(shop.id);
+    const message = `Dekho ${shop.name} ShopWala pe!\n\nYahan se unka catalog dekho aur order karo:\n${deepLink}`;
 
     await Share.share({
       message,

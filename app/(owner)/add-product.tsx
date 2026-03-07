@@ -6,7 +6,7 @@
 import { useAuthStore } from '@store/authStore';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { z } from 'zod';
 import { CustomButton } from '../../src/components/CustomButton';
 import { TextInput } from '../../src/components/TextInput';
@@ -154,7 +154,12 @@ export default function AddProductScreen() {
   };
 
   return (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
     <ScrollView className="flex-1 bg-white p-4">
+        keyboardShouldPersistTaps="handled"
       <Text className="text-2xl font-bold text-gray-900 mb-1">Add Custom Product</Text>
       <Text className="text-sm text-gray-600 mb-5">
         Add products that are not available in template lists.
@@ -264,5 +269,6 @@ export default function AddProductScreen() {
         />
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

@@ -23,10 +23,12 @@ const Callout: any = null;
 import * as Linking from 'expo-linking';
 import { CategoryFilter } from '../../src/components/CategoryFilter';
 import { EmptyState } from '../../src/components/EmptyState';
+import { LoadingFooter } from '../../src/components/LoadingFooter';
 import { SearchBar } from '../../src/components/SearchBar';
 import { ShopCard } from '../../src/components/ShopCard';
 import { ShopCardSkeleton } from '../../src/components/SkeletonLoader';
 import { useLanguage } from '../../src/hooks/useLanguage';
+import { usePaginatedShops } from '../../src/hooks/usePaginatedShops';
 import { useLocationViewModel } from '../../src/viewModels/useLocationViewModel';
 import { useSearchViewModel } from '../../src/viewModels/useSearchViewModel';
 
@@ -48,7 +50,6 @@ export default function CustomerHome() {
 
   const {
     query,
-    nearbyShops,
     isLoading,
     hasSearched,
     recentSearches,
@@ -63,6 +64,21 @@ export default function CustomerHome() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [refreshing, setRefreshing] = useState(false);
+
+  const {
+    shops: paginatedShops,
+    isLoading: isPaginatedLoading,
+    fetchNextPage: fetchNextShopsPage,
+    hasNextPage: hasNextShopsPage,
+    isFetchingNextPage: isFetchingNextShopsPage,
+    refetch: refetchPaginatedShops,
+  } = usePaginatedShops({
+    lat: location?.lat || 0,
+    lng: location?.lng || 0,
+    radiusKm: radius,
+    pageSize: 10,
+    enabled: hasLocation && !hasSearched,
+  });
 
   const showRadiusSelector = useCallback(() => {
     if (Platform.OS !== 'android') {
@@ -131,12 +147,13 @@ export default function CustomerHome() {
     try {
       await refreshLocation();
       await refreshShops();
+      await refetchPaginatedShops();
     } catch (error) {
       console.error('Refresh error:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshLocation, refreshShops]);
+  }, [refreshLocation, refreshShops, refetchPaginatedShops]);
 
   // Handle shop press
   const handleShopPress = useCallback((shopId: string) => {
@@ -177,9 +194,9 @@ export default function CustomerHome() {
   const filteredShops = useMemo(
     () =>
       selectedCategory === 'all'
-        ? nearbyShops
-        : nearbyShops.filter((shop) => shop.category === selectedCategory),
-    [selectedCategory, nearbyShops]
+        ? paginatedShops
+        : paginatedShops.filter((shop) => shop.category === selectedCategory),
+    [selectedCategory, paginatedShops]
   );
 
   // Render permission denied state
@@ -348,7 +365,7 @@ export default function CustomerHome() {
             </View>
 
             {/* Loading State */}
-            {isLoading || isLocating ? (
+            {isLoading || isLocating || isPaginatedLoading ? (
               <View className="px-6">
                 <ShopCardSkeleton />
                 <ShopCardSkeleton />
@@ -420,6 +437,18 @@ export default function CustomerHome() {
                     />
                   )}
                   keyExtractor={(item) => item.id}
+                  onEndReached={() => {
+                    if (hasNextShopsPage && !isFetchingNextShopsPage) {
+                      fetchNextShopsPage();
+                    }
+                  }}
+                  onEndReachedThreshold={0.5}
+                  ListFooterComponent={
+                    <LoadingFooter
+                      isLoading={isFetchingNextShopsPage}
+                      text={language === 'ur' ? 'مزید دکانیں لوڈ ہو رہی ہیں...' : 'Loading more shops...'}
+                    />
+                  }
                 />
               </View>
             )}

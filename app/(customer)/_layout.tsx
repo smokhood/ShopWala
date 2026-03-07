@@ -50,13 +50,14 @@ export default function CustomerLayout() {
           backgroundColor: 'white',
           borderTopWidth: 1,
           borderTopColor: '#e5e7eb',
-          paddingBottom: 4,
-          paddingTop: 4,
-          height: 60,
+          paddingBottom: 8,
+          paddingTop: 6,
+          height: 68,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 1,
         },
       }}
     >
@@ -94,6 +95,15 @@ export default function CustomerLayout() {
           title: t('customer.orders') || 'Orders',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={size} color={color} />
           ),
         }}
       />

@@ -18,12 +18,14 @@ import {
     View,
 } from 'react-native';
 import { EmptyState } from '../../src/components/EmptyState';
+import { LoadingFooter } from '../../src/components/LoadingFooter';
 import { OfflineBanner } from '../../src/components/OfflineBanner';
 import { ProductItem } from '../../src/components/ProductItem';
 import { SearchBar } from '../../src/components/SearchBar';
 import { ShopCard } from '../../src/components/ShopCard';
 import { ProductItemSkeleton } from '../../src/components/SkeletonLoader';
 import { useLanguage } from '../../src/hooks/useLanguage';
+import { usePaginatedSearchResults } from '../../src/hooks/usePaginatedSearchResults';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLocationViewModel } from '../../src/viewModels/useLocationViewModel';
 import { useSearchViewModel } from '../../src/viewModels/useSearchViewModel';
@@ -69,7 +71,7 @@ export default function ResultsScreen() {
   const initialQuery = (queryParam || '').toString().trim();
   const isMultiSearch = fromMultiSearch === 'true';
 
-  const { radius, updateRadius } = useLocationViewModel();
+  const { location, radius, updateRadius } = useLocationViewModel();
   const { user } = useAuthStore();
 
   const {
@@ -77,7 +79,6 @@ export default function ResultsScreen() {
     setQuery,
     search,
     searchResults,
-    groupedByShop,
     isLoading,
     error,
     sortResults,
@@ -152,8 +153,70 @@ export default function ResultsScreen() {
     loadCache();
   }, [isOffline, query]);
 
-  const displayedResults = searchResults.length > 0 ? searchResults : cachedResults;
-  const displayedGrouped = (groupedByShop as unknown as GroupedShop[]) || [];
+  const {
+    products: paginatedProducts,
+    isLoading: isPaginatedLoading,
+    fetchNextPage: fetchNextProductsPage,
+    hasNextPage: hasNextProductsPage,
+    isFetchingNextPage: isFetchingNextProductsPage,
+  } = usePaginatedSearchResults({
+    query: query.trim(),
+    lat: location?.lat || 0,
+    lng: location?.lng || 0,
+    radiusKm: radius,
+    pageSize: 15,
+    enabled: !!query.trim() && !!location && !isOffline,
+  });
+
+  const shouldUsePaginated = !!query.trim() && !!location && !isOffline;
+  const baseResults = shouldUsePaginated
+    ? paginatedProducts
+    : (searchResults.length > 0 ? searchResults : cachedResults);
+
+  const displayedResults = useMemo(() => {
+    const results = [...baseResults];
+
+    const filtered = showOpenOnly
+      ? results.filter((p) => p.shop?.isCurrentlyOpen ?? p.shop?.isOpen)
+      : results;
+
+    switch (activeFilter) {
+      case 'cheapest':
+        return filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
+      case 'best_rated':
+        return filtered.sort((a, b) => (b.shop?.rating || 0) - (a.shop?.rating || 0));
+      case 'nearest':
+      default:
+        return filtered.sort((a, b) => (a.shop?.distanceKm || 0) - (b.shop?.distanceKm || 0));
+    }
+  }, [baseResults, showOpenOnly, activeFilter]);
+
+  const displayedGrouped = useMemo<GroupedShop[]>(() => {
+    const shopMap = new Map<string, GroupedShop>();
+
+    displayedResults.forEach((product) => {
+      if (!shopMap.has(product.shopId)) {
+        shopMap.set(product.shopId, {
+          id: product.shopId,
+          name: product.shop?.name || 'Unknown',
+          category: product.shop?.category || 'other',
+          photoUrl: (product.shop as any)?.photoUrl || null,
+          rating: product.shop?.rating || 0,
+          isOpen: product.shop?.isOpen ?? true,
+          hours: product.shop?.hours || { closeTime: '' },
+          products: [],
+          matchedCount: 0,
+          distanceKm: product.shop?.distanceKm,
+        });
+      }
+
+      const shop = shopMap.get(product.shopId)!;
+      shop.products.push(product);
+      shop.matchedCount += 1;
+    });
+
+    return Array.from(shopMap.values());
+  }, [displayedResults]);
 
   const parsedQueryItems = useMemo(() => {
     if (!isMultiSearch) {
@@ -393,6 +456,9 @@ export default function ResultsScreen() {
     );
   };
 
+  const shouldShowLoading =
+    isLoading || (shouldUsePaginated && isPaginatedLoading && paginatedProducts.length === 0);
+
   return (
     <View className="flex-1 bg-gray-50">
       <OfflineBanner />
@@ -483,7 +549,7 @@ export default function ResultsScreen() {
         </Text>
       </View>
 
-      {isLoading ? (
+      {shouldShowLoading ? (
         <View className="px-4">
           <ProductItemSkeleton />
           <ProductItemSkeleton />
@@ -534,6 +600,18 @@ export default function ResultsScreen() {
               />
             );
           }}
+          onEndReached={() => {
+            if (hasNextProductsPage && !isFetchingNextProductsPage) {
+              fetchNextProductsPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            <LoadingFooter
+              isLoading={isFetchingNextProductsPage}
+              text={language === 'ur' ? 'مزید پروڈکٹس لوڈ ہو رہی ہیں...' : 'Loading more products...'}
+            />
+          }
         />
       ) : (
         <FlashList
@@ -606,6 +684,18 @@ export default function ResultsScreen() {
               </View>
             );
           }}
+          onEndReached={() => {
+            if (hasNextProductsPage && !isFetchingNextProductsPage) {
+              fetchNextProductsPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            <LoadingFooter
+              isLoading={isFetchingNextProductsPage}
+              text={language === 'ur' ? 'مزید نتائج لوڈ ہو رہے ہیں...' : 'Loading more results...'}
+            />
+          }
         />
       )}
 

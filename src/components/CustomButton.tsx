@@ -24,10 +24,13 @@ export function CustomButton({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      className={`bg-blue-600 rounded-lg p-4 items-center ${disabled ? 'opacity-50' : ''}`}
+      activeOpacity={0.9}
+      className={`rounded-xl px-5 py-3.5 items-center justify-center border border-transparent ${
+        disabled ? 'bg-blue-400 opacity-70' : 'bg-blue-600'
+      }`}
       style={style}
     >
-      <Text className="text-white font-semibold text-base" style={textStyle}>
+      <Text className="text-white font-semibold text-[15px] tracking-wide" style={textStyle}>
         {title}
       </Text>
     </TouchableOpacity>

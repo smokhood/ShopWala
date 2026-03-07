@@ -41,7 +41,6 @@ export default function OTPScreen() {
     sendOTP,
     verifyOTP,
     resendOTP,
-    setUserRole,
   } = useAuthViewModel();
 
   const [phone, setPhone] = useState('');
@@ -144,12 +143,7 @@ export default function OTPScreen() {
 
     try {
       setIsSubmitting(true);
-      await verifyOTP(code);
-      
-      // Set role if provided from role-select
-      if (params.role) {
-        await setUserRole(params.role);
-      }
+      await verifyOTP(code, params.role);
 
       // Success - navigation handled by auth guard
     } catch (err: any) {

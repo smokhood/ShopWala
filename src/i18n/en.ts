@@ -1,9 +1,9 @@
-// English Translations for DukandaR
+// English Translations for ShopWala
 
 export const en = {
   // Common
   common: {
-    app_name: 'DukandaR',
+    app_name: 'ShopWala',
     loading: 'Loading...',
     error: 'Error',
     retry: 'Retry',
@@ -31,7 +31,7 @@ export const en = {
 
   // Authentication
   auth: {
-    welcome: 'Welcome to DukandaR',
+    welcome: 'Welcome to ShopWala',
     tagline: 'Every shop in your street, in one place',
     i_am_customer: "I'm a Customer",
     i_am_shop_owner: "I'm a Shop Owner",
@@ -49,7 +49,7 @@ export const en = {
     seconds: 's',
     login_success: 'Login successful',
     logout: 'Logout',
-    biometric_prompt: 'Unlock DukandaR',
+    biometric_prompt: 'Unlock ShopWala',
     invalid_phone: 'Invalid phone number',
     invalid_otp: 'Invalid OTP',
     error_title: 'Error',
@@ -161,7 +161,7 @@ export const en = {
     different_shop: 'Different Shop',
     one_shop_at_a_time: 'You can only order from one shop at a time. Please remove existing items first.',
     whatsapp_greeting: 'السلام علیکم! I would like to contact',
-    from_dukandar_app: 'from DukandaR app',
+    from_dukandar_app: 'from ShopWala app',
     error: 'Error',
     whatsapp_open_failed: 'Failed to open WhatsApp',
     please_login_first: 'Please log in first',

@@ -4,25 +4,37 @@
  */
 import type { User, UserRole } from '@models/User';
 import { auth, db } from '@services/firebase';
-import { clearOldCache } from '@services/offlineService';
+import { clearAllData, clearOldCache } from '@services/offlineService';
 import { formatPhone } from '@utils/formatters';
 import { otpSchema, pakistaniPhoneSchema } from '@utils/validators';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import {
     ApplicationVerifier,
     ConfirmationResult,
+    deleteUser,
     signInWithPhoneNumber,
     signOut
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    setDoc,
+    where,
+    writeBatch
+} from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useLanguageStore } from '../store/languageStore';
 
 export function useAuthViewModel() {
   const router = useRouter();
-  const { setUser, setLoading, clearUser: clearAuthStore } = useAuthStore();
+    const { user, setUser, setLoading, clearUser: clearAuthStore } = useAuthStore();
   const selectedLanguage = useLanguageStore((state) => state.language);
 
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -100,7 +112,7 @@ export function useAuthViewModel() {
   /**
    * Verify OTP code
    */
-  const verifyOTP = async (otp: string): Promise<void> => {
+  const verifyOTP = async (otp: string, desiredRole?: UserRole): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -138,7 +150,7 @@ export function useAuthViewModel() {
             id: firebaseUser.uid,
             phone: phoneNumber,
             name: '',
-            role: 'customer',
+            role: desiredRole ?? 'customer',
             shopId: null,
             savedShops: [],
             isOnboarded: false,
@@ -149,6 +161,24 @@ export function useAuthViewModel() {
 
           await setDoc(userDocRef, userData);
           console.log('[Firestore] New user created');
+        }
+
+        // Apply selected role before updating store to avoid redirect flicker.
+        if (desiredRole && userData.role !== desiredRole) {
+          await setDoc(
+            userDocRef,
+            {
+              role: desiredRole,
+              updatedAt: new Date(),
+            },
+            { merge: true }
+          );
+
+          userData = {
+            ...userData,
+            role: desiredRole,
+            updatedAt: new Date() as any,
+          };
         }
 
         setUser(userData);
@@ -260,7 +290,7 @@ export function useAuthViewModel() {
   const authenticateWithBiometric = async (): Promise<boolean> => {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'DukandaR mein dakhil hon',
+        promptMessage: 'ShopWala mein dakhil hon',
         fallbackLabel: 'پاس ورڈ استعمال کریں',
         cancelLabel: 'منسوخ',
       });
@@ -269,6 +299,78 @@ export function useAuthViewModel() {
     } catch (error) {
       console.error('Biometric auth error:', error);
       return false;
+    }
+  };
+
+  const deleteDocumentsByField = async (
+    collectionName: string,
+    field: string,
+    value: string
+  ): Promise<void> => {
+    const docsSnapshot = await getDocs(
+      query(collection(db, collectionName), where(field, '==', value))
+    );
+
+    if (docsSnapshot.empty) {
+      return;
+    }
+
+    const docs = docsSnapshot.docs;
+    const chunkSize = 400;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      const chunk = docs.slice(i, i + chunkSize);
+
+      chunk.forEach((item) => {
+        batch.delete(item.ref);
+      });
+
+      await batch.commit();
+    }
+  };
+
+  /**
+   * Delete current user's account and related data.
+   */
+  const deleteAccount = async (): Promise<void> => {
+    try {
+      setLoading(true);
+
+      const currentUser = auth.currentUser;
+      if (!currentUser || !user) {
+        throw new Error('Session expire ho gayi hai. Dobara login karein.');
+      }
+
+      if (user.role === 'owner' && user.shopId) {
+        await deleteDocumentsByField('products', 'shopId', user.shopId);
+        await deleteDocumentsByField('deals', 'shopId', user.shopId);
+        await deleteDocumentsByField('orders', 'shopId', user.shopId);
+        await deleteDoc(doc(db, 'shops', user.shopId));
+      }
+
+      if (user.role === 'customer') {
+        await deleteDocumentsByField('orders', 'customerId', user.id);
+      }
+
+      await deleteDocumentsByField('notifications', 'userId', user.id);
+      await deleteDoc(doc(db, 'users', user.id));
+
+      await deleteUser(currentUser);
+
+      clearAuthStore();
+      await clearAllData();
+      await SecureStore.deleteItemAsync('dukandar-auth-storage');
+
+      router.replace('/(auth)/role-select' as any);
+    } catch (error: any) {
+      console.error('Delete account error:', error);
+      if (error?.code === 'auth/requires-recent-login') {
+        throw new Error('Security ke liye dobara login karke account delete karein.');
+      }
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -314,5 +416,6 @@ export function useAuthViewModel() {
     checkBiometricAvailability,
     authenticateWithBiometric,
     logout,
+    deleteAccount,
   };
 }

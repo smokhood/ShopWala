@@ -11,14 +11,19 @@ import {
 import { initDB } from '@services/offlineService';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
+import { useURL } from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { ErrorInfo, useEffect } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import { ForceUpdateModal } from '../src/components/ForceUpdateModal';
+import { useAppVersion } from '../src/hooks/useAppVersion';
 import { initI18n } from '../src/i18n';
 import { useAuthStore } from '../src/store/authStore';
+import { isAppDeepLink, parseDeepLink } from '../src/utils/deepLinks';
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
@@ -42,6 +47,7 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
+    const { needsUpdate, playStoreUrl, isChecking: isVersionChecking } = useAppVersion();
   const { user, isLoading, isAuthenticated, hasCompletedOnboarding, resetAuthState, logAuthState, finishRehydration } = useAuthStore();
 
   // Load fonts
@@ -192,6 +198,41 @@ export default function RootLayout() {
     };
   }, [router]);
 
+  // Handle deep link navigation
+  const incomingUrl = useURL();
+  useEffect(() => {
+    if (!incomingUrl) {
+      return;
+    }
+
+    // Only process app deep links
+    if (!isAppDeepLink(incomingUrl)) {
+      console.log('[Deep Link] Not an app deep link, ignoring:', incomingUrl);
+      return;
+    }
+
+    // Wait until user is authenticated and onboarded
+    if (!isAuthenticated || !user?.isOnboarded) {
+      console.log('[Deep Link] User not ready, queueing navigation:', incomingUrl);
+      // TODO: Could store in state to process after auth completes
+      return;
+    }
+
+    // Parse and navigate
+    const result = parseDeepLink(incomingUrl);
+    console.log('[Deep Link] Parsed:', result);
+
+    if (result.type === 'shop' && result.path) {
+      console.log('[Deep Link] Navigating to shop:', result.shopId);
+      router.push(result.path as any);
+    } else if (result.type === 'search' && result.path) {
+      console.log('[Deep Link] Navigating to search:', result.query);
+      router.push(result.path as any);
+    } else {
+      console.warn('[Deep Link] Unknown deep link type:', result.type);
+    }
+  }, [incomingUrl, isAuthenticated, user?.isOnboarded, router]);
+
   // Show blank screen while fonts/auth loading
   if (!fontsLoaded || isLoading) {
     return (
@@ -199,16 +240,28 @@ export default function RootLayout() {
     );
   }
 
+  const handleBoundaryError = (error: Error, errorInfo: ErrorInfo) => {
+    console.error('[Root ErrorBoundary] Error caught:', error);
+    console.error('[Root ErrorBoundary] Component stack:', errorInfo.componentStack);
+    // In production, send to monitoring service:
+    // Sentry.captureException(error, { contexts: { react: errorInfo } });
+  };
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(customer)" />
-          <Stack.Screen name="(owner)" />
-        </Stack>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary onError={handleBoundaryError}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryClientProvider client={queryClient}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(customer)" />
+            <Stack.Screen name="(owner)" />
+          </Stack>
+                  {!isVersionChecking && needsUpdate && (
+                    <ForceUpdateModal visible={true} playStoreUrl={playStoreUrl} />
+                  )}
+        </QueryClientProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

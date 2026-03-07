@@ -23,6 +23,8 @@ import { Controller, useForm } from 'react-hook-form';
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
     Text,
     TouchableOpacity,
@@ -685,8 +687,13 @@ export default function RegisterShopScreen() {
   };
 
   return (
-    <>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={0}
+    >
       <ScrollView className="flex-1 bg-white p-4">
+        keyboardShouldPersistTaps="handled"
       {/* Progress Indicator */}
       <View className="mb-6">
         <Text className="text-sm text-gray-600 mb-2">
@@ -748,6 +755,6 @@ export default function RegisterShopScreen() {
         onConfirm={handleConfirmMapLocation}
         onClose={() => setIsMapVisible(false)}
       />
-    </>
+    </KeyboardAvoidingView>
   );
 }

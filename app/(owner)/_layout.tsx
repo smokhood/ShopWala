@@ -28,14 +28,14 @@ export default function OwnerLayout() {
           backgroundColor: 'white',
           borderTopWidth: 1,
           borderTopColor: '#e5e7eb',
-          paddingBottom: 4,
-          paddingTop: 4,
-          height: 60,
+          paddingBottom: 8,
+          paddingTop: 6,
+          height: 68,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginTop: 2,
+          marginTop: 1,
         },
       }}
     >

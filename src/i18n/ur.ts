@@ -1,9 +1,9 @@
-// Urdu Translations for DukandaR
+// Urdu Translations for ShopWala
 
 export const ur = {
   // Common
   common: {
-    app_name: 'دکاندار',
+    app_name: 'شاپ والا',
     loading: 'لوڈ ہو رہا ہے...',
     error: 'خرابی',
     retry: 'دوبارہ کوشش کریں',
@@ -161,7 +161,7 @@ export const ur = {
     different_shop: 'الگ دکان',
     one_shop_at_a_time: 'ایک وقت میں صرف ایک دکان کا آرڈر بھیج سکتے ہیں۔ پہلے موجودہ آئٹمز ہٹائیں۔',
     whatsapp_greeting: 'السلام علیکم! میں',
-    from_dukandar_app: 'سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nDukandaR app سے',
+    from_dukundar_app: 'سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nShopWala app سے',
     please_login_first: 'پہلے لاگ اِن کریں',
     thank_you: 'شکریہ',
     stock_report_saved: 'اسٹاک رپورٹ محفوظ ہو گئی',

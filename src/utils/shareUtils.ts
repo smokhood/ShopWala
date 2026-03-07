@@ -4,6 +4,7 @@
  */
 
 import { Alert, Share } from 'react-native';
+import { buildShopLink } from './deepLinks';
 
 interface ShareShopParams {
   shopId: string;
@@ -21,10 +22,10 @@ export const shareShop = async ({
   shopPhone,
 }: ShareShopParams) => {
   try {
-    const deepLink = `dukandar://shop/${shopId}`;
+    const deepLink = buildShopLink(shopId);
     const appLink = 'https://play.google.com/store/apps/details?id=com.dukandar';
     
-    const message = `*${shopName}* DukandaR pe hai!\n\n📱 آن لائن کیٹلاگ دیکھیں اور واٹس ایپ پر آرڈر کریں:\n${deepLink}\n\n📲 DukandaR ڈاؤن لوڈ کریں:\n${appLink}`;
+    const message = `*${shopName}* ShopWala pe hai!\n\n📱 آن لائن کیٹلاگ دیکھیں اور واٹس ایپ پر آرڈر کریں:\n${deepLink}\n\n📲 ShopWala ڈاؤن لوڈ کریں:\n${appLink}`;
 
     await Share.share({
       message: message,

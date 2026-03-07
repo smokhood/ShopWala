@@ -71,7 +71,7 @@ function ShopCardComponent({
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        className="bg-white rounded-xl p-3 mr-3 shadow-sm w-64"
+        className="bg-white rounded-2xl p-3 mr-3 border border-gray-100 w-64"
       >
         <View className="flex-row">
           {/* Shop Photo */}
@@ -96,7 +96,7 @@ function ShopCardComponent({
 
           {/* Shop Info */}
           <View className="flex-1 ml-3">
-            <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+            <Text className="text-[15px] font-semibold text-gray-900" numberOfLines={1}>
               {shop.name}
             </Text>
             <View className="flex-row items-center mt-1">
@@ -135,7 +135,7 @@ function ShopCardComponent({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      className="bg-white rounded-2xl shadow-sm mb-3 p-4"
+      className="bg-white rounded-2xl border border-gray-100 mb-3 p-4"
     >
       <View className="flex-row">
         {/* Shop Photo */}
@@ -160,7 +160,7 @@ function ShopCardComponent({
 
         {/* Shop Content */}
         <View className="flex-1 ml-4">
-          <Text className="text-base font-bold text-gray-900" numberOfLines={1}>
+          <Text className="text-[17px] font-bold text-gray-900" numberOfLines={1}>
             {shop.name}
           </Text>
 
@@ -170,7 +170,7 @@ function ShopCardComponent({
             style={{ backgroundColor: `${getCategoryColor(shop.category)}20` }}
           >
             <Text
-              className="text-xs font-medium"
+              className="text-[11px] font-semibold"
               style={{ color: getCategoryColor(shop.category) }}
             >
               {shop.category}
@@ -220,7 +220,7 @@ function ShopCardComponent({
             e.stopPropagation();
             onWhatsAppPress();
           }}
-          className="bg-green-50 rounded-lg px-3 py-2 flex-row items-center"
+          className="bg-green-50 border border-green-100 rounded-lg px-3 py-2 flex-row items-center"
         >
           <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
           <Text className="text-xs font-medium text-primary ml-1">

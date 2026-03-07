@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DukandaR",
+    "name": "ShopWala",
     "slug": "dukandar",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,8 +22,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dukandar.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "DukandaR aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "DukandaR aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake.",
+        "NSLocationWhenInUseUsageDescription": "ShopWala aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "ShopWala aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake.",
         "NSCameraUsageDescription": "Dukaan ki tasveer lene ke liye camera chahiye."
       }
     },
@@ -43,7 +43,13 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ],
       "intentFilters": [
         {
@@ -72,7 +78,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "DukandaR aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake."
+          "locationAlwaysAndWhenInUsePermission": "ShopWala aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake."
         }
       ],
       [
@@ -103,8 +109,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
-      }
-    }
+        "projectId": "af0822d5-0858-4b37-9f60-8ab71d22ad7d"
+      },
+      "router": {}
+    },
+    "owner": "smok.hood"
   }
 }

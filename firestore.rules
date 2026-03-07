@@ -136,7 +136,11 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.resource.data.customerId == request.auth.uid;
 
       // Shop owners can update orders of their own shop (status, notes, etc.)
-      allow update: if isAuthenticated() && resource.data.shopId == currentUserShopId();
+      // Customers can update their own orders (mark as completed)
+      allow update: if isAuthenticated() && (
+        resource.data.shopId == currentUserShopId() ||
+        resource.data.customerId == request.auth.uid
+      );
 
       // No deletes
       allow delete: if false;
