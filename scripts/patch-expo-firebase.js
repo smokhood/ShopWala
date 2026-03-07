@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔧 Applying expo-firebase-core patches for Gradle 8 and expo-modules-core v3...');
+console.log('🔧 Applying patches for Gradle 8 compatibility...');
 
 const modulePath = path.join(__dirname, '..', 'node_modules', 'expo-firebase-core', 'android');
 
@@ -92,5 +92,20 @@ public class FirebaseCorePackage extends BasePackage {
 
 fs.writeFileSync(packageJavaPath, packageJavaContent);
 console.log('✅ Patched FirebaseCorePackage.java');
+
+// Patch 4: Fix react-native-screens spotless.gradle issue
+const screensBuildGradlePath = path.join(__dirname, '..', 'node_modules', 'react-native-screens', 'android', 'build.gradle');
+if (fs.existsSync(screensBuildGradlePath)) {
+  let screensBuildGradleContent = fs.readFileSync(screensBuildGradlePath, 'utf8');
+  
+  // Comment out the spotless.gradle apply line
+  screensBuildGradleContent = screensBuildGradleContent.replace(
+    /if \(isRunningInContextOfScreensRepo\(\)\) \{\s*apply from: 'spotless\.gradle'\s*\}/gs,
+    '// Spotless disabled for Expo builds\n// if (isRunningInContextOfScreensRepo()) {\n//     apply from: \'spotless.gradle\'\n// }'
+  );
+  
+  fs.writeFileSync(screensBuildGradlePath, screensBuildGradleContent);
+  console.log('✅ Patched react-native-screens build.gradle');
+}
 
 console.log('✅ All patches applied successfully!');
