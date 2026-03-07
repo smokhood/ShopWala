@@ -161,23 +161,48 @@ export function useOrderViewModel(): UseOrderViewModelReturn {
         throw new Error('User not authenticated');
       }
       
+      // Validate required shop data
+      if (!shopId) {
+        throw new Error('Shop ID missing from cart');
+      }
+      if (!shopName) {
+        throw new Error('Shop name missing from cart');
+      }
+      if (!shopWhatsapp) {
+        throw new Error('Shop WhatsApp missing from cart');
+      }
+
       // Build order object
       const order = {
-        id: Date.now().toString(),
         items,
         shopId,
         shopName,
         shopWhatsapp,
+        customerName: user.name || 'Customer',
         subtotal: totalPrice,
-        note,
+        note: note || null,
         createdAt: new Date(),
       };
       
+      console.log('[Order ViewModel] Placing order:', {
+        shopId: order.shopId,
+        shopName: order.shopName,
+        itemCount: order.items.length,
+        total: order.subtotal,
+      });
+      
       // Save order to Firestore FIRST
-      await orderService.createOrder(order, user.id);
+      const createdOrderId = await orderService.createOrder(order, user.id);
+
+      const whatsappOrder = {
+        ...order,
+        id: createdOrderId,
+        status: 'pending' as const,
+        customerId: user.id,
+      };
       
       // Then open WhatsApp with order
-      await whatsappService.openWhatsAppOrder(order);
+      await whatsappService.openWhatsAppOrder(whatsappOrder);
       
       // Track WhatsApp click
       if (shopId) {

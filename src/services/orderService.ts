@@ -32,18 +32,43 @@ export async function createOrder(
   customerId: string
 ): Promise<string> {
   try {
+    // Validate required fields
+    if (!order.shopId || typeof order.shopId !== 'string') {
+      throw new Error('Invalid order: shopId is required');
+    }
+    if (!order.shopName || !order.shopWhatsapp) {
+      throw new Error('Invalid order: shop details are required');
+    }
+    if (!order.items || order.items.length === 0) {
+      throw new Error('Invalid order: items are required');
+    }
+    if (!customerId) {
+      throw new Error('Invalid order: customerId is required');
+    }
+
+    // Defensive: drop any client-side temporary id if it slips through.
+    const { id: _ignoredId, ...orderWithoutId } = order as Omit<Order, 'status' | 'customerId'> & {
+      id?: string;
+    };
+
     const orderData = {
-      ...order,
+      ...orderWithoutId,
       customerId,
       status: 'pending' as const,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
+    console.log('[Order Service] Creating order with shopId:', order.shopId);
     const docRef = await addDoc(collection(db, ORDERS_COLLECTION), orderData);
+    console.log('[Order Service] Order created successfully:', docRef.id);
     return docRef.id;
-  } catch (error) {
-    console.error('Create order error:', error);
+  } catch (error: any) {
+    console.error('[Order Service] Create order error:', {
+      message: error?.message,
+      code: error?.code,
+      details: error,
+    });
     throw error;
   }
 }
@@ -66,9 +91,10 @@ export async function getCustomerOrders(customerId: string): Promise<Order[]> {
       const dates = normalizeOrderDates(data);
 
       return {
-        id: docSnap.id,
         ...data,
         ...dates,
+        // Always prefer Firestore document id, never persisted payload id.
+        id: docSnap.id,
       } as Order;
     });
   } catch (error) {
@@ -95,9 +121,10 @@ export async function getShopOrders(shopId: string): Promise<Order[]> {
       const dates = normalizeOrderDates(data);
 
       return {
-        id: docSnap.id,
         ...data,
         ...dates,
+        // Always prefer Firestore document id, never persisted payload id.
+        id: docSnap.id,
       } as Order;
     });
   } catch (error) {
@@ -113,14 +140,57 @@ export async function getShopOrders(shopId: string): Promise<Order[]> {
  */
 export async function markOrderDispatched(orderId: string): Promise<void> {
   try {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const { getDoc } = await import('firebase/firestore');
     const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    
+    // Verify order exists and get current state
+    console.log('[Order Service] Fetching order for dispatch:', orderId);
+    const orderSnap = await getDoc(orderRef);
+    
+    if (!orderSnap.exists()) {
+      throw new Error('Order not found');
+    }
+
+    const orderData = orderSnap.data();
+    console.log('[Order Service] Order data:', {
+      id: orderId,
+      status: orderData.status,
+      shopId: orderData.shopId,
+      customerId: orderData.customerId,
+    });
+
+    if (!orderData.shopId) {
+      throw new Error('Order missing shopId field');
+    }
+
+    if (orderData.status !== 'pending') {
+      throw new Error(`Order cannot be dispatched. Current status: ${orderData.status}`);
+    }
+
+    console.log('[Order Service] Updating order status to dispatched');
     await updateDoc(orderRef, {
       status: 'dispatched',
-      dispatchedAt: new Date(),
-      updatedAt: new Date(),
+      dispatchedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
-  } catch (error) {
-    console.error('Mark order dispatched error:', error);
+    console.log('[Order Service] Order dispatched successfully');
+  } catch (error: any) {
+    console.error('[Order Service] Mark order dispatched error:', {
+      orderId,
+      message: error?.message,
+      code: error?.code,
+      details: error,
+    });
+    
+    // Enhance error message for permission denied
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. Verify you own this shop and the order shopId matches your shop.');
+    }
+    
     throw error;
   }
 }
@@ -132,14 +202,41 @@ export async function markOrderDispatched(orderId: string): Promise<void> {
  */
 export async function markOrderCompleted(orderId: string): Promise<void> {
   try {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const { getDoc } = await import('firebase/firestore');
     const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    
+    // Verify order exists and is in correct state
+    const orderSnap = await getDoc(orderRef);
+    if (!orderSnap.exists()) {
+      throw new Error('Order not found');
+    }
+
+    const orderData = orderSnap.data();
+    if (orderData.status !== 'dispatched') {
+      throw new Error(`Order cannot be completed. Current status: ${orderData.status}`);
+    }
+
     await updateDoc(orderRef, {
       status: 'completed',
-      completedAt: new Date(),
-      updatedAt: new Date(),
+      completedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
-  } catch (error) {
-    console.error('Mark order completed error:', error);
+    console.log('[Order Service] Order completed successfully:', orderId);
+  } catch (error: any) {
+    console.error('[Order Service] Mark order completed error:', {
+      orderId,
+      message: error?.message,
+      code: error?.code,
+    });
+    
+    if (error?.code === 'permission-denied') {
+      throw new Error('Permission denied. You can only complete your own orders that have been dispatched.');
+    }
+    
     throw error;
   }
 }

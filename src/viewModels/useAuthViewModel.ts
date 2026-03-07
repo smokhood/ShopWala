@@ -44,6 +44,9 @@ export function useAuthViewModel() {
   const [countdown, setCountdown] = useState(0);
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
+  const isPhoneAuthTestMode =
+    __DEV__ && process.env.EXPO_PUBLIC_FIREBASE_PHONE_AUTH_TESTING === 'true';
+
   // Countdown timer for resend OTP
   useEffect(() => {
     if (countdown > 0) {
@@ -63,13 +66,21 @@ export function useAuthViewModel() {
       setIsLoading(true);
       setError(null);
 
+      // Normalize phone input so both "300..." and "+92300..." work.
+      const digits = phone.replace(/\D/g, '');
+      const normalizedPhone = digits.startsWith('92') && digits.length === 12
+        ? digits.slice(2)
+        : digits.startsWith('03') && digits.length === 11
+          ? digits.slice(1)
+          : digits;
+
       // Validate and format phone
-      const validation = pakistaniPhoneSchema.safeParse(phone);
+      const validation = pakistaniPhoneSchema.safeParse(normalizedPhone);
       if (!validation.success) {
         throw new Error('Valid Pakistani number daalen (3XX-XXXXXXX)');
       }
 
-      const formattedPhone = formatPhone(phone);
+      const formattedPhone = formatPhone(normalizedPhone);
       setPhoneNumber(formattedPhone);
 
       // Use real Firebase Phone Auth
@@ -77,10 +88,28 @@ export function useAuthViewModel() {
       // For production/testing on native device, this will work directly
       try {
         console.log('[Phone Auth] Sending OTP to:', formattedPhone);
-        if (!verifier) {
-          throw new Error('reCAPTCHA verifier initialize nahi hua. App restart karke dobara koshish karein.');
+
+        let appVerifier = verifier;
+        if (!appVerifier) {
+          if (!isPhoneAuthTestMode) {
+            throw new Error(
+              'Phone auth verifier missing. For development, set EXPO_PUBLIC_FIREBASE_PHONE_AUTH_TESTING=true and use Firebase test phone numbers.'
+            );
+          }
+
+          auth.settings.appVerificationDisabledForTesting = true;
+          const testVerifier: ApplicationVerifier & { _reset: () => void } = {
+            type: 'recaptcha',
+            verify: async () => 'test-recaptcha-token',
+            _reset: () => {
+              // Firebase RN auth calls verifier._reset() in finally.
+            },
+          };
+          appVerifier = testVerifier;
+          console.warn('[Phone Auth] Test mode enabled (Firebase test numbers only).');
         }
-        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
+
+        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
         confirmationResultRef.current = confirmation;
         setOtpSent(true);
         setCountdown(60);
@@ -94,6 +123,8 @@ export function useAuthViewModel() {
           throw new Error('بہت زیادہ کوششیں، کچھ دیر بعد آزمائیں');
         } else if (authError.code === 'auth/network-request-failed') {
           throw new Error('انٹرنیٹ چیک کریں');
+        } else if (authError.code === 'auth/missing-app-credential') {
+          throw new Error('App verification required ہے. Firebase test mode یا verifier setup کریں۔');
         } else if (authError.code === 'auth/operation-not-supported-in-this-environment') {
           throw new Error('Phone Auth requires development build. See docs for setup.');
         } else {

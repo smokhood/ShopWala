@@ -22,6 +22,12 @@ import {
 import { CustomButton } from '../../src/components/CustomButton';
 import { useLanguage } from '../../src/hooks/useLanguage';
 import * as orderService from '../../src/services/orderService';
+import {
+    diagnoseAccessibleOrders,
+    diagnoseOrder,
+    diagnoseUserShop,
+    logDiagnostics,
+} from '../../src/utils/orderDiagnostics';
 
 export default function OwnerOrdersScreen() {
     const { user } = useAuthStore();
@@ -43,16 +49,73 @@ export default function OwnerOrdersScreen() {
     // Mark as dispatched mutation
     const dispatchMutation = useMutation({
         mutationFn: async (orderId: string) => {
+            console.log('[Owner Orders] Dispatching order:', orderId);
+            console.log('[Owner Orders] User shopId:', user?.shopId);
+            
+            if (!user?.shopId) {
+                throw new Error('You must have a registered shop to dispatch orders');
+            }
+
+            // Run diagnostics in development if enabled
+            if (__DEV__) {
+                try {
+                    const [orderDiag, userDiag, accessDiag] = await Promise.all([
+                        diagnoseOrder(orderId, user.id, user.shopId),
+                        diagnoseUserShop(user.id),
+                        diagnoseAccessibleOrders(user.shopId, orderId),
+                    ]);
+
+                    // Log accessible orders first
+                    console.log('\n🔍 ACCESSIBLE ORDERS CHECK:');
+                    console.log('  Can Query Orders:', accessDiag.canQueryOrders);
+                    console.log('  Total Orders Found:', accessDiag.totalOrdersFound);
+                    console.log('  Target Order Found:', accessDiag.targetOrderFound);
+                    console.log('  Order IDs:', accessDiag.orderIds);
+                    if (accessDiag.targetOrderData) {
+                        console.log('  Target Order Data:', accessDiag.targetOrderData);
+                    }
+                    if (accessDiag.issues.length > 0) {
+                        console.log('  ⚠️  Issues:', accessDiag.issues);
+                    }
+
+                    logDiagnostics(orderDiag, userDiag);
+
+                    // Check for blocking issues from accessible orders check
+                    if (!accessDiag.targetOrderFound && accessDiag.canQueryOrders) {
+                        const issueMsg = `Order ${orderId} not found in your shop's orders. ${accessDiag.issues.join(', ')}`;
+                        console.error('[Owner Orders] Cannot dispatch:', issueMsg);
+                        throw new Error(`BLOCK_DISPATCH:${issueMsg}`);
+                    }
+
+                    // Check for blocking issues from order diagnostics
+                    if (!orderDiag.canDispatch && orderDiag.orderExists) {
+                        const issueMsg = orderDiag.issues.join(', ');
+                        console.error('[Owner Orders] Cannot dispatch:', issueMsg);
+                        throw new Error(`BLOCK_DISPATCH:Cannot dispatch: ${issueMsg}`);
+                    }
+                } catch (diagError: any) {
+                    console.warn('[Owner Orders] Diagnostics failed:', diagError);
+                    // Block dispatch for known, deterministic ownership/state failures.
+                    if (typeof diagError?.message === 'string' && diagError.message.startsWith('BLOCK_DISPATCH:')) {
+                        throw new Error(diagError.message.replace('BLOCK_DISPATCH:', ''));
+                    }
+                    // Continue with dispatch attempt for non-deterministic diagnostic failures.
+                }
+            }
+            
             return await orderService.markOrderDispatched(orderId);
         },
         onSuccess: () => {
+            console.log('[Owner Orders] Order dispatched successfully');
             queryClient.invalidateQueries({ queryKey: ['owner-orders'] });
             Alert.alert(t('common.done'), t('owner.order_marked_dispatched'));
         },
         onError: (error: any) => {
+            console.error('[Owner Orders] Dispatch error:', error);
+            const errorMsg = error?.message || error?.toString() || t('owner.failed_update_order');
             Alert.alert(
                 t('common.error'),
-                error.message || t('owner.failed_update_order')
+                errorMsg
             );
         },
     });

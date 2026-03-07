@@ -35,8 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.onDealCreated = exports.onOrderCreated = void 0;
 const admin = __importStar(require("firebase-admin"));
-const firestore_1 = require("firebase-functions/v2/firestore");
 const firebase_functions_1 = require("firebase-functions");
+const firestore_1 = require("firebase-functions/v2/firestore");
 admin.initializeApp();
 const db = admin.firestore();
 const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';

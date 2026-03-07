@@ -2,6 +2,7 @@
 import { Deal } from '@models/Deal';
 import { NotificationType } from '@models/Notification';
 import Constants from 'expo-constants';
+import type { Firestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
 // Lazy load notifications only when needed to avoid Expo Go issues
@@ -215,19 +216,19 @@ export async function registerPushTokenForUser(
     const token = await getExpoPushToken();
     if (!token) return null;
 
-    const { doc, updateDoc, arrayUnion, serverTimestamp } = await import(
+    const { doc, setDoc, arrayUnion, serverTimestamp } = await import(
       'firebase/firestore'
     );
     const { db } = await import('@services/firebase');
 
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
+    await setDoc(userRef, {
       expoPushToken: token,
       expoPushTokens: arrayUnion(token),
       pushEnabled: true,
       pushTokenUpdatedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    }, { merge: true });
 
     return token;
   } catch (error) {
@@ -518,13 +519,13 @@ export async function markAsRead(
   notificationId: string
 ): Promise<void> {
   try {
-    const { doc, updateDoc } = await import('firebase/firestore');
+    const { updateDoc, serverTimestamp } = await import('firebase/firestore');
     const { db } = await import('@services/firebase');
 
-    const notifRef = doc(db, 'notifications', notificationId);
+    const notifRef = await getOwnedNotificationRef(db, userId, notificationId);
     await updateDoc(notifRef, {
       read: true,
-      readAt: new Date(),
+      readAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('Error marking notification as read:', error);
@@ -542,13 +543,38 @@ export async function deleteNotification(
   notificationId: string
 ): Promise<void> {
   try {
-    const { doc, deleteDoc } = await import('firebase/firestore');
+    const { deleteDoc } = await import('firebase/firestore');
     const { db } = await import('@services/firebase');
 
-    const notifRef = doc(db, 'notifications', notificationId);
+    const notifRef = await getOwnedNotificationRef(db, userId, notificationId);
     await deleteDoc(notifRef);
   } catch (error) {
     console.error('Error deleting notification:', error);
     throw error;
   }
+}
+
+/**
+ * Resolve a notification reference and verify it belongs to the caller.
+ */
+async function getOwnedNotificationRef(
+  db: Firestore,
+  userId: string,
+  notificationId: string
+) {
+  const { doc, getDoc } = await import('firebase/firestore');
+
+  const notifRef = doc(db, 'notifications', notificationId);
+  const snapshot = await getDoc(notifRef);
+
+  if (!snapshot.exists()) {
+    throw new Error('Notification not found');
+  }
+
+  const ownerId = snapshot.data()?.userId;
+  if (ownerId !== userId) {
+    throw new Error('Unauthorized notification access');
+  }
+
+  return notifRef;
 }

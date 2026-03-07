@@ -26,8 +26,22 @@ interface GroupedNotifications {
   older: any[];
 }
 
+function getNotificationDate(value: unknown): Date {
+  if (value instanceof Date) return value;
+  if (typeof (value as { toDate?: unknown })?.toDate === 'function') {
+    return ((value as { toDate: () => Date }).toDate());
+  }
+
+  const parsed = new Date(value as string | number);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date(0);
+  }
+
+  return parsed;
+}
+
 export default function NotificationsScreen() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -73,15 +87,15 @@ export default function NotificationsScreen() {
 
     return {
       today: notifications.filter((n) => {
-        const notifDate = n.createdAt.toDate();
+        const notifDate = getNotificationDate(n.createdAt);
         return notifDate >= today;
       }),
       thisWeek: notifications.filter((n) => {
-        const notifDate = n.createdAt.toDate();
+        const notifDate = getNotificationDate(n.createdAt);
         return notifDate >= weekAgo && notifDate < today;
       }),
       older: notifications.filter((n) => {
-        const notifDate = n.createdAt.toDate();
+        const notifDate = getNotificationDate(n.createdAt);
         return notifDate < weekAgo;
       }),
     };
@@ -160,7 +174,7 @@ export default function NotificationsScreen() {
           <Text className="text-gray-600 text-xs mt-1">{notification.body}</Text>
         </View>
         <Text className="text-gray-500 text-xs ml-2">
-          {formatTimeAgo(notification.createdAt.toDate(), t)}
+          {formatTimeAgo(getNotificationDate(notification.createdAt), t)}
         </Text>
       </TouchableOpacity>
     </Swipeable>

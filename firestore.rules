@@ -121,8 +121,19 @@ service cloud.firestore {
     // Orders collection
     match /orders/{orderId} {
       // Resolve current user's shopId once for owner checks
+      // Returns null if user document doesn't exist or lacks shopId field
       function currentUserShopId() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
+        let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+        return userDoc != null && 'shopId' in userDoc.data ? userDoc.data.shopId : null;
+      }
+
+      // Validate that the status transition is allowed
+      function isValidStatusTransition() {
+        let oldStatus = resource.data.status;
+        let newStatus = request.resource.data.status;
+        // Only allow: pending → dispatched OR dispatched → completed
+        return (oldStatus == 'pending' && newStatus == 'dispatched') ||
+               (oldStatus == 'dispatched' && newStatus == 'completed');
       }
 
       function customerCanMarkCompleted() {
@@ -137,16 +148,20 @@ service cloud.firestore {
       // Shop owners can read orders for their own shop
       allow read: if isAuthenticated() && (
         resource.data.customerId == request.auth.uid ||
-        resource.data.shopId == currentUserShopId()
+        (resource.data.shopId != null && resource.data.shopId == currentUserShopId())
       );
 
-      // Authenticated customers can create orders
-      allow create: if isAuthenticated() && request.resource.data.customerId == request.auth.uid;
+      // Authenticated customers can create orders with required fields
+      allow create: if isAuthenticated() 
+        && request.resource.data.customerId == request.auth.uid
+        && request.resource.data.keys().hasAll(['shopId', 'customerId', 'status', 'items'])
+        && request.resource.data.shopId != null;
 
       // Shop owners can update orders of their own shop (status, notes, etc.)
       // Customers can update their own orders (mark as completed)
+      // Status transitions must be valid
       allow update: if isAuthenticated() && (
-        resource.data.shopId == currentUserShopId() ||
+        (resource.data.shopId != null && resource.data.shopId == currentUserShopId() && isValidStatusTransition()) ||
         customerCanMarkCompleted()
       );
 

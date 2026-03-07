@@ -19,6 +19,26 @@ import {
 import { CustomButton } from '../../src/components/CustomButton';
 import { TextInput } from '../../src/components/TextInput';
 
+type OwnerNotificationSettings = {
+  orders: boolean;
+  reviews: boolean;
+  promotions: boolean;
+};
+
+const DEFAULT_NOTIFICATION_SETTINGS: OwnerNotificationSettings = {
+  orders: true,
+  reviews: true,
+  promotions: false,
+};
+
+function getInitialNotificationSettings(user: unknown): OwnerNotificationSettings {
+  const saved = (user as { ownerNotificationSettings?: Partial<OwnerNotificationSettings> } | null)?.ownerNotificationSettings;
+  return {
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(saved || {}),
+  };
+}
+
 export default function OwnerSettingsScreen() {
   const { user } = useAuthStore();
   const { logout, deleteAccount } = useAuthViewModel();
@@ -31,11 +51,46 @@ export default function OwnerSettingsScreen() {
     description: '',
   });
 
-  const [notificationSettings, setNotificationSettings] = useState({
-    orders: true,
-    reviews: true,
-    promotions: false,
-  });
+  const [notificationSettings, setNotificationSettings] = useState<OwnerNotificationSettings>(
+    () => getInitialNotificationSettings(user)
+  );
+  const [isSavingNotificationSettings, setIsSavingNotificationSettings] = useState(false);
+
+  const handleNotificationToggle = async (
+    key: keyof OwnerNotificationSettings,
+    value: boolean
+  ) => {
+    if (!user?.id) return;
+
+    const previous = notificationSettings;
+    const next = {
+      ...notificationSettings,
+      [key]: value,
+    };
+
+    setNotificationSettings(next);
+    setIsSavingNotificationSettings(true);
+
+    try {
+      const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+      const { db } = await import('@services/firebase');
+
+      await setDoc(
+        doc(db, 'users', user.id),
+        {
+          ownerNotificationSettings: next,
+          pushEnabled: next.orders || next.reviews,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      setNotificationSettings(previous);
+      Alert.alert('Error', 'Failed to update notification settings');
+    } finally {
+      setIsSavingNotificationSettings(false);
+    }
+  };
 
   const handleSaveSettings = async () => {
     if (!user?.shopId) return;
@@ -218,12 +273,10 @@ export default function OwnerSettingsScreen() {
             <Text className="text-gray-700">Order Notifications</Text>
             <Switch
               value={notificationSettings.orders}
-              onValueChange={(value) =>
-                setNotificationSettings({
-                  ...notificationSettings,
-                  orders: value,
-                })
-              }
+              onValueChange={(value) => {
+                void handleNotificationToggle('orders', value);
+              }}
+              disabled={isSavingNotificationSettings}
               trackColor={{ false: '#d1d5db', true: '#fecaca' }}
               thumbColor={notificationSettings.orders ? '#dc2626' : '#f3f4f6'}
             />
@@ -233,12 +286,10 @@ export default function OwnerSettingsScreen() {
             <Text className="text-gray-700">Review Notifications</Text>
             <Switch
               value={notificationSettings.reviews}
-              onValueChange={(value) =>
-                setNotificationSettings({
-                  ...notificationSettings,
-                  reviews: value,
-                })
-              }
+              onValueChange={(value) => {
+                void handleNotificationToggle('reviews', value);
+              }}
+              disabled={isSavingNotificationSettings}
               trackColor={{ false: '#d1d5db', true: '#fecaca' }}
               thumbColor={notificationSettings.reviews ? '#dc2626' : '#f3f4f6'}
             />
@@ -248,12 +299,10 @@ export default function OwnerSettingsScreen() {
             <Text className="text-gray-700">Promotional Emails</Text>
             <Switch
               value={notificationSettings.promotions}
-              onValueChange={(value) =>
-                setNotificationSettings({
-                  ...notificationSettings,
-                  promotions: value,
-                })
-              }
+              onValueChange={(value) => {
+                void handleNotificationToggle('promotions', value);
+              }}
+              disabled={isSavingNotificationSettings}
               trackColor={{ false: '#d1d5db', true: '#fecaca' }}
               thumbColor={notificationSettings.promotions ? '#dc2626' : '#f3f4f6'}
             />

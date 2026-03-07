@@ -692,8 +692,7 @@ export default function RegisterShopScreen() {
       style={{ flex: 1 }}
       keyboardVerticalOffset={0}
     >
-      <ScrollView className="flex-1 bg-white p-4">
-        keyboardShouldPersistTaps="handled"
+      <ScrollView className="flex-1 bg-white p-4" keyboardShouldPersistTaps="handled">
       {/* Progress Indicator */}
       <View className="mb-6">
         <Text className="text-sm text-gray-600 mb-2">

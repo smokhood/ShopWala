@@ -136,7 +136,20 @@ export async function createDeal(
  */
 export async function deleteDeal(shopId: string, dealId: string): Promise<void> {
   try {
+    const { getDoc } = await import('firebase/firestore');
+
     const dealRef = doc(db, DEALS_COLLECTION, dealId);
+    const dealSnap = await getDoc(dealRef);
+
+    if (!dealSnap.exists()) {
+      throw new Error('Deal not found');
+    }
+
+    const dealData = dealSnap.data() as { shopId?: string };
+    if (dealData.shopId !== shopId) {
+      throw new Error('Unauthorized deal delete attempt');
+    }
+
     await deleteDoc(dealRef);
   } catch (error) {
     console.error('Delete deal error:', error);

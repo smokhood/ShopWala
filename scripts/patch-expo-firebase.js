@@ -7,20 +7,21 @@ console.log('🔧 Applying patches for Gradle 8 compatibility...');
 
 const modulePath = path.join(__dirname, '..', 'node_modules', 'expo-firebase-core', 'android');
 
-// Patch 1: Fix build.gradle for Gradle 8
-const buildGradlePath = path.join(modulePath, 'build.gradle');
-let buildGradleContent = fs.readFileSync(buildGradlePath, 'utf8');
+if (fs.existsSync(modulePath)) {
+  // Patch 1: Fix build.gradle for Gradle 8
+  const buildGradlePath = path.join(modulePath, 'build.gradle');
+  let buildGradleContent = fs.readFileSync(buildGradlePath, 'utf8');
 
-buildGradleContent = buildGradleContent
-  .replace("classifier = 'sources'", "archiveClassifier.set('sources')")
-  .replace('compileSdkVersion safeExtGet("compileSdkVersion", 31)', 'compileSdk safeExtGet("compileSdkVersion", 31)');
+  buildGradleContent = buildGradleContent
+    .replace("classifier = 'sources'", "archiveClassifier.set('sources')")
+    .replace('compileSdkVersion safeExtGet("compileSdkVersion", 31)', 'compileSdk safeExtGet("compileSdkVersion", 31)');
 
-fs.writeFileSync(buildGradlePath, buildGradleContent);
-console.log('✅ Patched build.gradle');
+  fs.writeFileSync(buildGradlePath, buildGradleContent);
+  console.log('✅ Patched build.gradle');
 
-// Patch 2: Fix FirebaseCoreModule.java for expo-modules-core v3
-const moduleJavaPath = path.join(modulePath, 'src', 'main', 'java', 'expo', 'modules', 'firebase', 'core', 'FirebaseCoreModule.java');
-const moduleJavaContent = `// Copyright 2020-present 650 Industries. All rights reserved.
+  // Patch 2: Fix FirebaseCoreModule.java for expo-modules-core v3
+  const moduleJavaPath = path.join(modulePath, 'src', 'main', 'java', 'expo', 'modules', 'firebase', 'core', 'FirebaseCoreModule.java');
+  const moduleJavaContent = `// Copyright 2020-present 650 Industries. All rights reserved.
 
 package expo.modules.firebase.core;
 
@@ -67,12 +68,12 @@ public class FirebaseCoreModule {
 }
 `;
 
-fs.writeFileSync(moduleJavaPath, moduleJavaContent);
-console.log('✅ Patched FirebaseCoreModule.java');
+  fs.writeFileSync(moduleJavaPath, moduleJavaContent);
+  console.log('✅ Patched FirebaseCoreModule.java');
 
-// Patch 3: Fix FirebaseCorePackage.java
-const packageJavaPath = path.join(modulePath, 'src', 'main', 'java', 'expo', 'modules', 'firebase', 'core', 'FirebaseCorePackage.java');
-const packageJavaContent = `package expo.modules.firebase.core;
+  // Patch 3: Fix FirebaseCorePackage.java
+  const packageJavaPath = path.join(modulePath, 'src', 'main', 'java', 'expo', 'modules', 'firebase', 'core', 'FirebaseCorePackage.java');
+  const packageJavaContent = `package expo.modules.firebase.core;
 
 import android.content.Context;
 
@@ -90,8 +91,11 @@ public class FirebaseCorePackage extends BasePackage {
 }
 `;
 
-fs.writeFileSync(packageJavaPath, packageJavaContent);
-console.log('✅ Patched FirebaseCorePackage.java');
+  fs.writeFileSync(packageJavaPath, packageJavaContent);
+  console.log('✅ Patched FirebaseCorePackage.java');
+} else {
+  console.log('ℹ️ expo-firebase-core not installed, skipping firebase core patch');
+}
 
 // Patch 4: Fix react-native-screens spotless.gradle issue
 const screensBuildGradlePath = path.join(__dirname, '..', 'node_modules', 'react-native-screens', 'android', 'build.gradle');

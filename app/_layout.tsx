@@ -48,7 +48,7 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
     const { needsUpdate, playStoreUrl, isChecking: isVersionChecking } = useAppVersion();
-  const { user, isLoading, isAuthenticated, hasCompletedOnboarding, resetAuthState, logAuthState, finishRehydration } = useAuthStore();
+  const { user, isLoading, isAuthenticated, hasCompletedOnboarding, logAuthState, finishRehydration } = useAuthStore();
 
   // Load fonts
   const [fontsLoaded, fontError] = useFonts({
@@ -62,11 +62,10 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // In development, reset auth state to test auth flow
+        // Keep auth state stable by default in development.
+        // If you need a one-off reset, call resetAuthState() manually from a debug action.
         if (__DEV__) {
-          console.log('🧪 [DEV MODE] Resetting auth state...');
-          // Uncomment below line to reset auth on every app start (for testing):
-          await resetAuthState();
+          console.log('🧪 [DEV MODE] Keeping persisted auth state');
         }
 
         // Initialize i18n
